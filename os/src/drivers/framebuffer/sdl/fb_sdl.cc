@@ -29,7 +29,7 @@
  * Variables for the libSDL output window
  */
 static SDL_Surface *screen;
-static int scr_width = 1024, scr_height = 768;
+static int scr_width = 640, scr_height = 480;
 static Framebuffer::Mode::Format scr_format = Framebuffer::Mode::RGB565;
 
 /*

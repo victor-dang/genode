@@ -1,0 +1,161 @@
+#
+# \brief  Runs ioquake3 engine with openarena files
+# \author Stefan Kalkowski
+# \date   2013-09-11
+#
+
+set build_components {
+	core
+	init
+	drivers/timer
+	drivers/input
+	drivers/nic
+	drivers/usb
+	server/ffat_fs
+	app/ioquake
+}
+
+lappend_if [have_spec acpi]        build_components drivers/acpi
+lappend_if [have_spec pci]         build_components drivers/pci
+lappend_if [have_spec framebuffer] build_components drivers/framebuffer
+
+build $build_components
+create_boot_directory
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="LOG"/>
+		<service name="CAP"/>
+		<service name="RAM"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_PORT"/>
+		<service name="IO_MEM"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start> }
+
+append_if [have_spec acpi] config {
+	<start name="acpi">
+		<resource name="RAM" quantum="8M"/>
+		<binary name="acpi_drv"/>
+		<provides>
+			<service name="PCI"/>
+			<service name="IRQ" />
+		</provides>
+		<route>
+			<service name="PCI"> <any-child /> </service>
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start> }
+
+append_if [expr ![have_spec acpi] && [have_spec pci]] config {
+	<start name="pci_drv">
+		<resource name="RAM" quantum="5M"/>
+		<provides><service name="PCI"/></provides>
+	</start> }
+
+append_if [have_spec ps2] config {
+	<start name="ps2_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Input"/></provides>
+	</start>}
+
+append_if [have_spec framebuffer] config {
+	<start name="fb_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+
+append config {
+	<start name="usb_drv">
+		<resource name="RAM" quantum="40M"/>
+		<provides> <service name="Block"/> </provides>
+		<config ata="yes" ehci="yes" xhci="yes"><storage /></config>
+	</start>
+	<start name="nic_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Nic"/></provides>
+	</start>
+	<start name="ffat_fs">
+		<resource name="RAM" quantum="4M"/>
+		<provides> <service name="File_system"/> </provides>
+		<config> <policy label="" root="/" writeable="yes" /> </config>
+	</start>
+	<start name="ioquake">
+		<resource name="RAM" quantum="1G" />
+		<config>
+			<arg value="ioquake"/>
+			<arg value="+set"/>
+			<arg value="fs_game"/>
+			<arg value="baseq3"/>
+			<arg value="+set"/>
+			<arg value="fs_basepath"/>
+			<arg value="/"/>
+		</config>
+	</start>
+</config>}
+
+install_config $config
+
+#if {![file exists bin/openarena.img]} {
+#	puts "Download openarena files ..."
+#	exec >& /dev/null wget -c -O bin/openarena-0.8.8.zip http://download.tuxfamily.org/openarena/rel/088/openarena-0.8.8.zip
+#	exec dd if=/dev/zero of=bin/openarena.img bs=1 count=1 seek=419430400 2>/dev/null
+#	exec mkfs.vfat bin/openarena.img
+#	set tmp_dir [exec mktemp -d]
+#	exec sudo mount bin/openarena.img $tmp_dir -o loop
+#	exec sudo unzip bin/openarena-0.8.8.zip openarena-0.8.8/baseoa* -d $tmp_dir
+#	exec sudo mkdir -p $tmp_dir/dev
+#	exec sudo mkdir -p $tmp_dir/usr
+#	exec sudo dd if=/dev/urandom of=$tmp_dir/dev/urandom bs=1K count=1024 2>/dev/null
+#	exec sudo umount $tmp_dir
+#	exec rmdir $tmp_dir
+#}
+
+
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core
+	init
+	timer
+	nic_drv
+	usb_drv
+	ffat_fs
+	ioquake
+	gallium.lib.so
+	ld.lib.so
+	libc.lib.so
+	libc_fs.lib.so
+	libc_log.lib.so
+	libm.lib.so
+	pthread.lib.so
+	sdl.lib.so
+}
+
+lappend_if [have_spec acpi]        boot_modules acpi_drv
+lappend_if [have_spec pci]         boot_modules pci_drv
+lappend_if [have_spec ps2]         boot_modules ps2_drv
+lappend_if [have_spec framebuffer] boot_modules fb_drv
+lappend_if [have_spec usb]         boot_modules usb_drv
+
+build_boot_image $boot_modules
+
+#append qemu_args " -m 1024 -net nic,model=e1000 -serial mon:stdio "
+#append qemu_args " -hda bin/openarena.img -boot order=d "
+run_genode_until forever

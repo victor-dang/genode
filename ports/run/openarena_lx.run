@@ -1,0 +1,101 @@
+#
+# \brief  Runs ioquake3 engine with openarena files
+# \author Stefan Kalkowski
+# \date   2013-09-11
+#
+
+set build_components {
+	core
+	init
+	drivers/timer
+	drivers/input
+	drivers/framebuffer
+	server/tar_fs
+	app/ioquake
+}
+
+build $build_components
+create_boot_directory
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="LOG"/>
+		<service name="CAP"/>
+		<service name="RAM"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_PORT"/>
+		<service name="IO_MEM"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	<start name="fb_sdl">
+		<resource name="RAM" quantum="4M"/>
+		<provides>
+			<service name="Framebuffer"/>
+			<service name="Input"/>
+		</provides>
+	</start>
+	<start name="ram_fs">
+		<resource name="RAM" quantum="4M"/>
+		<provides> <service name="File_system"/> </provides>
+		<config> <policy label="" root="/" writeable="yes" /> </config>
+	</start>
+	<start name="tar_fs">
+		<resource name="RAM" quantum="10M"/>
+		<provides><service name="File_system"/></provides>
+		<config>
+			<archive name="openarena.tar" />
+			<policy label="ioquake" root="/" />
+		</config>
+	</start>
+	<start name="ioquake">
+		<resource name="RAM" quantum="800M" />
+		<config>
+			<arg value="ioquake"/>
+			<arg value="+set"/>
+			<arg value="fs_game"/>
+			<arg value="baseoa"/>
+			<arg value="+set"/>
+			<arg value="fs_basepath"/>
+			<arg value="/openarena-0.8.8"/>
+		</config>
+	</start>
+</config>}
+
+install_config $config
+
+# generic modules
+set boot_modules {
+	core
+	init
+	timer
+	fb_sdl
+	tar_fs
+	ioquake
+	gallium.lib.so
+	ld.lib.so
+	libc.lib.so
+	libc_fs.lib.so
+	libc_log.lib.so
+	libm.lib.so
+	pthread.lib.so
+	sdl.lib.so
+	openarena.tar
+}
+
+build_boot_image $boot_modules
+
+#append qemu_args " -m 1024 -net nic,model=e1000 -serial mon:stdio "
+#append qemu_args " -hda bin/openarena.img -boot order=d "
+run_genode_until forever

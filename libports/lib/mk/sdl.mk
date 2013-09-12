@@ -67,7 +67,7 @@ SRC_C   += joystick/SDL_joystick.c \
 INC_DIR += $(SDL_DIR)/src/joystick
 
 # we need libc
-LIBS = libc pthread
+LIBS = libc pthread gallium libc_log
 
 # backend path
 vpath % $(REP_DIR)/src/lib/sdl

@@ -165,7 +165,7 @@ class Winsys : public pipe_winsys
 	                   struct pipe_surface *surf,
 	                   void *context_private)
 	{
-		PDBG("not implemented");
+		genode_framebuffer()->flush();
 	}
 
 	static struct pipe_buffer *
@@ -182,7 +182,10 @@ class Winsys : public pipe_winsys
 	                    void *ptr,
 	                    unsigned bytes)
 	{
-		PDBG("not implemented"); return 0;
+		Pipe_buffer *buf =
+			new (Genode::env()->heap()) Pipe_buffer(64, 0, bytes);
+		Genode::memcpy(buf->data(), ptr, bytes);
+		return buf;
 	}
 
 	/*
