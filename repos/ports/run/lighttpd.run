@@ -9,6 +9,7 @@ set build_components {
 	drivers/pci
 	drivers/nic
 	drivers/timer
+	server/ram_fs
 	app/lighttpd
 }
 
@@ -41,7 +42,7 @@ append config {
 
 append_if [have_spec pci] config {
 	<start name="pci_drv">
-		<resource name="RAM" quantum="4M"/>
+		<resource name="RAM" quantum="2M"/>
 		<provides><service name="PCI"/></provides>
 	</start>}
 
@@ -50,22 +51,15 @@ append config {
 		<resource name="RAM" quantum="4M"/>
 		<provides><service name="Nic"/></provides>
 	</start>
-	<start name="lighttpd">
-		<resource name="RAM" quantum="1G" />
+	<start name="ram_fs">
+		<resource name="RAM" quantum="10M"/>
+		<provides><service name="File_system"/></provides>
 		<config>
-			<arg value="lighttpd" />
-			<arg value="-f" />
-			<arg value="/etc/lighttpd/lighttpd.conf" />
-			<arg value="-D" />
-			<libc stdin="/dev/null" stdout="/dev/log" stderr="/dev/log">
-				<vfs>
-					<dir name="dev">
-						<log/>
-						<null/>
-					</dir>
-					<dir name="etc">
-						<dir name="lighttpd">
-							<inline name="lighttpd.conf">
+			<policy label="lighttpd" root="/" />
+			<content>
+				<dir name="etc">
+					<dir name="lighttpd">
+						<inline name="lighttpd.conf">
 # lighttpd configuration
 server.port          = 80
 server.document-root = "/website"
@@ -78,24 +72,22 @@ mimetype.assign      = (
   ".html"         =>      "text/html",
   ".htm"          =>      "text/html"
 )
-							</inline>
-						</dir>
-					</dir>
-					<dir name="website">
-						<inline name="index.html">
-<html>
-	<head>
-		<title>Hello</title>
-	</head>
-	<body>
-		<p>Hello Genode!</p>
-		<b>I am bold ;-)</b>
-	</body>
-</html>
 						</inline>
 					</dir>
-				</vfs>
-			</libc>
+				</dir>
+				<dir name="website">
+					 <rom name="init" as="index.bin" />
+				</dir>
+			</content>
+		</config>
+	</start>
+	<start name="lighttpd">
+		<resource name="RAM" quantum="1G" />
+		<config>
+			<arg value="lighttpd" />
+			<arg value="-f" />
+			<arg value="/etc/lighttpd/lighttpd.conf" />
+			<arg value="-D" />
 		</config>
 	</start>}
 
@@ -111,9 +103,9 @@ install_config $config
 
 # generic modules
 set boot_modules {
-	core init timer ld.lib.so nic_drv
-	libc.lib.so libm.lib.so
-	lwip.lib.so zlib.lib.so
+	core init timer ld.lib.so nic_drv ram_fs
+	libc.lib.so libm.lib.so libc_fs.lib.so libc_log.lib.so
+	lwip.lib.so zlib.lib.so libcrypto.lib.so libssl.lib.so
 	lighttpd
 }
 
@@ -128,4 +120,11 @@ append_if [have_spec lan9118] qemu_args " -net nic,model=lan9118 "
 append qemu_args " -net user -redir tcp:5555::80 "
 append qemu_args " -nographic -serial mon:stdio "
 
-run_genode_until forever
+run_genode_until  {.*got IP address.*} 220
+set serial_id $spawn_id
+
+spawn wget http://localhost:5555/index.bin -O /dev/null
+set wget_id $spawn_id
+
+wait_for_output forever 0 $wget_id
+puts "\nTest succeeded"
