@@ -41,7 +41,7 @@ Policy_id Session_component::alloc_policy(size_t size)
 	if (size > _argument_buffer.size)
 		throw Policy_too_large();
 
-	Policy_id const id(_policy_cnt++);
+	Policy_id const id(++_policy_cnt);
 
 	if (!_md_alloc.withdraw(size))
 		throw Out_of_metadata();
