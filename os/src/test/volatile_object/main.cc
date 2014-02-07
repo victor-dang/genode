@@ -75,6 +75,25 @@ struct Compound
 };
 
 
+struct Throwing
+{
+	Throwing(bool throws)
+	{
+		if (throws) {
+			PLOG("construct Throwing -> throw exception");
+			throw -1;
+		} else {
+			PLOG("construct Throwing -> don't throw");
+		}
+	}
+
+	~Throwing()
+	{
+		PLOG("destruct Throwing");
+	}
+};
+
+
 static void call_const_method(Compound const &compound)
 {
 	compound.member->reference.const_method();
@@ -123,6 +142,15 @@ int main(int, char **)
 			PLOG("got exception, as expected"); }
 
 		printf("-- destruct Compound and Objects 1 and 2 --\n");
+	}
+
+	try {
+		printf("-- construct Throwing object\n");
+		Volatile_object<Throwing> inst(false);
+		inst.construct(true);
+		PERR("expected contructor to throw");
+	} catch (int i) {
+		printf("-- catched exception as expected\n");
 	}
 
 	printf("--- test-volatile_object finished ---\n");
