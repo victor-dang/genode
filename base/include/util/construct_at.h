@@ -15,6 +15,7 @@
 #define _INCLUDE__UTIL__CONSTRUCT_AT_H_
 
 #include <base/stdint.h>
+#include <base/printf.h>
 
 namespace Genode {
 	template <typename T, typename... ARGS>
@@ -38,9 +39,11 @@ static inline T *Genode::construct_at(void *at, ARGS &&... args)
 
 		void *operator new (size_t, void *ptr) { return ptr; }
 		void  operator delete (void *, void *) { }
+		void  operator delete (void *) {
+			PERR("cxx: Placeable::operator delete (void *) not supported."); }
 	};
 
-	return new (at) Placeable(args...);
+	return new (at) Placeable(static_cast<ARGS &&>(args)...);
 }
 
 #endif /* _INCLUDE__UTIL__CONSTRUCT_AT_H_ */

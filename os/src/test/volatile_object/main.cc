@@ -75,11 +75,21 @@ struct Compound
 };
 
 
+struct Bool
+{
+	bool b;
+
+	Bool(Bool const &) = delete;
+
+	Bool(bool const &b) : b(b) { }
+};
+
+
 struct Throwing
 {
-	Throwing(bool throws)
+	Throwing(Bool const &throws)
 	{
-		if (throws) {
+		if (throws.b) {
 			PLOG("construct Throwing -> throw exception");
 			throw -1;
 		} else {
@@ -87,7 +97,7 @@ struct Throwing
 		}
 	}
 
-	~Throwing()
+	virtual ~Throwing()
 	{
 		PLOG("destruct Throwing");
 	}
@@ -146,8 +156,10 @@ int main(int, char **)
 
 	try {
 		printf("-- construct Throwing object\n");
-		Volatile_object<Throwing> inst(false);
-		inst.construct(true);
+		Bool const b_false(false), b_true(true);
+
+		Volatile_object<Throwing> inst(b_false);
+		inst.construct(b_true);
 		PERR("expected contructor to throw");
 	} catch (int i) {
 		printf("-- catched exception as expected\n");
