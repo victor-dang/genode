@@ -15,6 +15,7 @@
 #ifndef _INCLUDE__UTIL__BIT_ARRAY_H_
 #define _INCLUDE__UTIL__BIT_ARRAY_H_
 
+#include <util/string.h>
 #include <base/exception.h>
 #include <base/stdint.h>
 
