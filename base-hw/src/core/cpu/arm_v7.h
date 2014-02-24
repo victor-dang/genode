@@ -182,6 +182,7 @@ namespace Arm_v7
 		 */
 		static void init_phys_kernel()
 		{
+			PDBG("do something");
 			Board::prepare_kernel();
 			Sctlr::write(Sctlr::init_phys_kernel());
 			Psr::write(Psr::init_kernel());
