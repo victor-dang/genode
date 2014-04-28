@@ -28,6 +28,7 @@
 #include <kernel/pd.h>
 #include <kernel/kernel.h>
 #include <kernel/test.h>
+#include <kernel/debug.h>
 #include <platform_pd.h>
 #include <trustzone.h>
 #include <timer.h>
@@ -89,6 +90,8 @@ extern "C" void init_kernel_up()
 void init_kernel_mp_primary()
 {
 	Core_thread::singleton();
+	Serial_irq::singleton();
+
 	Genode::printf("kernel initialized\n");
 	test();
 }

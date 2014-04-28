@@ -88,13 +88,17 @@ void Thread::_call_update_pd()
 	if (Cpu_domain_update::_do_global(pd->asid)) { _pause(); }
 }
 
-
+extern addr_t _prog_img_beg;
+extern addr_t _prog_img_end;
 void Thread::print_backtrace()
 {
-	PINF("Backtrace of %s -> %s", pd_label(), label());
 	addr_t * fp = (addr_t*)r11;
 	while (fp && *fp) {
-		Genode::printf("%lx\n", *fp);
-		fp = (addr_t*)*(fp - 1);
+		if (*fp >= (addr_t)&_prog_img_beg && *fp < (addr_t)&_prog_img_end) {
+			Genode::printf("    %lx\n", *fp);
+			fp = (addr_t*)*(fp - 1);
+		} else {
+			fp = (addr_t*)*fp;
+		}
 	}
 }

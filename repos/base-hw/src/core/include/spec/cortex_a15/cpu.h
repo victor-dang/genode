@@ -331,7 +331,11 @@ class Genode::Cpu : public Arm_v7
 			/**
 			 * Constructor
 			 */
-			User_context() { cpsr = Psr::init_user(); }
+			User_context()
+			{
+				Genode::memset(this, 0, sizeof(User_context));
+				cpsr = Psr::init_user();
+			}
 
 			/**
 			 * Support for kernel calls

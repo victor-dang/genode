@@ -407,40 +407,33 @@ void Thread::_call_update_instr_region()
 }
 
 
-void Thread::_print_activity(bool const printing_thread)
+void Thread::print_activity()
 {
-	Genode::printf("\033[33m%s -> %s:\033[0m", pd_label(), label());
+	Genode::printf("ip=%08lx sp=%08lx", ip, sp);
 	switch (_state) {
 	case AWAITS_START: {
-		Genode::printf("\033[32m init\033[0m");
+		Genode::printf("\033[32m await start  \033[0m");
 		break; }
 	case ACTIVE: {
-		if (!printing_thread) { Genode::printf("\033[32m run\033[0m"); }
-		else { Genode::printf("\033[32m debug\033[0m"); }
+		Genode::printf("\033[32m active       \033[0m");
 		break; }
 	case AWAITS_IPC: {
 		_print_activity_when_awaits_ipc();
 		break; }
 	case AWAITS_RESUME: {
-		Genode::printf("\033[32m await RES\033[0m");
+		Genode::printf("\033[32m await resume \033[0m");
 		break; }
 	case AWAITS_SIGNAL: {
-		Genode::printf("\033[32m await SIG\033[0m");
+		Genode::printf("\033[32m await signal \033[0m");
 		break; }
 	case AWAITS_SIGNAL_CONTEXT_KILL: {
-		Genode::printf("\033[32m await SCK\033[0m");
+		Genode::printf("\033[32m await sigkill\033[0m");
 		break; }
 	case STOPPED: {
-		Genode::printf("\033[32m stop\033[0m");
+		Genode::printf("\033[32m stopped      \033[0m");
 		break; }
 	}
-	_print_common_activity();
-}
-
-
-void Thread::_print_common_activity()
-{
-	Genode::printf(" ip %lx sp %lx\n", ip, sp);
+	Genode::printf(" \033[33m%s -> %s\033[0m\n", pd_label(), label());
 }
 
 
@@ -449,15 +442,15 @@ void Thread::_print_activity_when_awaits_ipc()
 	switch (Ipc_node::state()) {
 	case AWAIT_REPLY: {
 		Thread * const server = dynamic_cast<Thread *>(Ipc_node::callee());
-		Genode::printf("\033[32m await RPL %s -> %s\033[0m",
+		Genode::printf("\033[32m await reply [%s -> %s]\033[0m",
 		               server->pd_label(), server->label());
 		break; }
 	case AWAIT_REQUEST: {
-		Genode::printf("\033[32m await REQ\033[0m");
+		Genode::printf("\033[32m await ipc    \033[0m");
 		break; }
 	case PREPARE_AND_AWAIT_REPLY: {
 		Thread * const server = dynamic_cast<Thread *>(Ipc_node::callee());
-		Genode::printf("\033[32m prep RPL await RPL %s -> %s\033[0m",
+		Genode::printf("\033[32m prepare reply [%s -> %s]\033[0m",
 		               server->pd_label(), server->label());
 		break; }
 	default: break;
@@ -691,6 +684,13 @@ Thread::Thread(unsigned const priority, unsigned const quota,
 	_signal_receiver(0), _label(label)
 {
 	_init();
+	thread_list().insert(this);
+}
+
+
+Thread::~Thread()
+{
+	thread_list().remove(this);
 }
 
 
@@ -738,4 +738,11 @@ Thread & Core_thread::singleton()
 {
 	static Core_thread ct;
 	return ct;
+}
+
+
+Genode::List<Thread>& Kernel::thread_list()
+{
+	static Genode::List<Thread> list;
+	return list;
 }

@@ -30,6 +30,8 @@ namespace Genode
 	{
 		public:
 
+			static constexpr size_t IRQ = Board::UART_2_IRQ;
+
 			/**
 			 * Constructor
 			 *
@@ -39,7 +41,10 @@ namespace Genode
 			:
 				Exynos_uart_base(Board::UART_2_MMIO_BASE,
 				                 Board::UART_2_CLOCK, baud_rate)
-			{ }
+			{ _rx_enable(); }
+
+			bool char_avail()     { return _rx_avail(); }
+			char get_char()       { return _rx_char();  }
 	};
 }
 

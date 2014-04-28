@@ -26,6 +26,8 @@ namespace Kernel
 	class Thread;
 	class Thread_event;
 	class Core_thread;
+
+	extern Genode::List<Thread>& thread_list();
 }
 
 /**
@@ -79,7 +81,7 @@ class Kernel::Thread
 :
 	public Kernel::Object, public Cpu::User_context, public Cpu_domain_update,
 	public Ipc_node, public Signal_context_killer, public Signal_handler,
-	public Cpu_job
+	public Cpu_job, public Genode::List<Thread>::Element
 {
 	friend class Thread_event;
 	friend class Core_thread;
@@ -195,21 +197,9 @@ class Kernel::Thread
 		size_t _core_to_kernel_quota(size_t const quota) const;
 
 		/**
-		 * Print the activity of the thread
-		 *
-		 * \param printing_thread  wether this thread caused the debugging
-		 */
-		void _print_activity(bool const printing_thread);
-
-		/**
 		 * Print the activity of the thread when it awaits a message
 		 */
 		void _print_activity_when_awaits_ipc();
-
-		/**
-		 * Print activity info that is printed regardless of the thread state
-		 */
-		void _print_common_activity();
 
 
 		/*********************************************************
@@ -309,6 +299,7 @@ class Kernel::Thread
 		 */
 		Thread(unsigned const priority, unsigned const quota,
 		       char const * const label);
+		~Thread();
 
 		/**
 		 * Syscall to create a thread
@@ -335,6 +326,11 @@ class Kernel::Thread
 		 */
 		static void syscall_destroy(Thread * thread) {
 			call(call_id_delete_thread(), (Call_arg)thread); }
+
+		/**
+		 * Print the activity of the thread
+		 */
+		void print_activity();
 
 		void print_backtrace();
 

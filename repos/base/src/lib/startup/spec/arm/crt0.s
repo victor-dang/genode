@@ -23,6 +23,9 @@
 	.global _start
 	_start:
 
+	mov fp, #0
+	mov lr, #0
+
 	/* make initial value of some registers available to higher-level code */
 	ldr r4, =__initial_sp
 	str sp, [r4]
