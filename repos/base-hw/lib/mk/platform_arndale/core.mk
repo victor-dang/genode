@@ -9,8 +9,10 @@
 INC_DIR += $(REP_DIR)/src/core/include/spec/arndale
 
 # add C++ sources
+SRC_CC += spec/arndale/platform_services.cc
 SRC_CC += spec/arndale/platform_support.cc
 SRC_CC += spec/arndale/cpu.cc
+SRC_CC += vm_session_component.cc
 
 # include less specific configuration
 include $(REP_DIR)/lib/mk/exynos5/core.inc

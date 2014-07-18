@@ -25,12 +25,13 @@
 #include <kernel/processor.h>
 #include <translation_table.h>
 #include <assert.h>
+#include <page_slab.h>
+#include <board.h>
 
 /* structure of the mode transition */
 extern int            _mt_begin;
 extern int            _mt_end;
 extern int            _mt_user_entry_pic;
-extern int            _mt_vm_entry_pic;
 extern Genode::addr_t _mt_client_context_ptr;
 extern Genode::addr_t _mt_master_context_begin;
 extern Genode::addr_t _mt_master_context_end;
@@ -260,7 +261,7 @@ class Kernel::Mode_transition_control
 		void continue_vm(Cpu_state_modes * const context,
 		                 unsigned const processor_id)
 		{
-			_continue_client(context, processor_id, (addr_t)&_mt_vm_entry_pic);
+			_continue_client(context, processor_id, Genode::Board::vm_entry());
 		}
 
 } __attribute__((aligned(Mode_transition_control::ALIGN)));

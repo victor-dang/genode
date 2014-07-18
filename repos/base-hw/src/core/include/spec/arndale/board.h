@@ -14,6 +14,9 @@
 #ifndef _BOARD_H_
 #define _BOARD_H_
 
+/* Genode includes */
+#include <base/stdint.h>
+
 /* core includes */
 #include <drivers/board_base.h>
 
@@ -26,6 +29,7 @@ namespace Genode
 			static void outer_cache_invalidate() { }
 			static void outer_cache_flush() { }
 			static void prepare_kernel();
+			static addr_t vm_entry();
 
 			/**
 			 * Tell secondary processors where to start execution from

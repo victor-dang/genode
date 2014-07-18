@@ -348,8 +348,9 @@ extern "C" void kernel()
 
 
 extern "C" void hyp_trap() {
-	register int exc asm("r0");
-	PINF("HYP EXCEPTION %d", exc);
+	register void * exc asm("r2");
+	register void * ip  asm("r1");
+	PINF("HYP EXCEPTION %p IP %p", exc, ip);
 	while (1) ;
 }
 

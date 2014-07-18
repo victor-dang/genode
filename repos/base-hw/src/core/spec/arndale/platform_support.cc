@@ -1,6 +1,7 @@
 /*
  * \brief   Parts of platform that are specific to Arndale
  * \author  Martin Stein
+ * \author  Stefan Kalkowski
  * \date    2012-04-27
  */
 
@@ -17,6 +18,10 @@
 #include <pic.h>
 #include <cpu.h>
 #include <timer.h>
+#include <kernel/kernel.h>
+#include <platform_pd.h>
+#include <unmanaged_singleton.h>
+#include <long_translation_table.h>
 
 using namespace Genode;
 
@@ -58,6 +63,12 @@ Cpu::User_context::User_context() { cpsr = Psr::init_user(); }
 
 /* hypervisor exception vector address */
 extern void* _hyp_kernel_entry;
+extern void* _mt_hyp_entry_pic;
+
+static unsigned char hyp_mode_stack[1024];
+
+Genode::addr_t Genode::Board::vm_entry() {
+	return (addr_t) &_mt_hyp_entry_pic; }
 
 void Genode::Board::prepare_kernel()
 {
@@ -75,25 +86,71 @@ void Genode::Board::prepare_kernel()
 			"mov r4, lr                      \n"  /* copy current mode's lr  */
 			"mcr p15, 0, %[nsacr], c1, c1, 2 \n"  /* set NSACR register      */
 			"cps #22                         \n"  /* switch to monitor mode  */
-			"mov sp, r3                      \n"  /* restore sp              */
-			"mov lr, r4                      \n"  /* restore lr              */
+			"mov lr, #218                    \n"  /* set PSR to hyp mode     */
+			"msr spsr_cxfs, lr               \n"  /* prepare saved PSR       */
 			"mcr p15, 0, %[scr], c1, c1, 0   \n"  /* set SCR register        */
-			"isb" :: [scr] "r" (scr), [nsacr] "r" (nsacr) : "r3");
+			"adr lr, 1f                      \n"  /* set return address      */
+			"subs pc, lr, #0                 \n"  /* exception return        */
+			"1: mov sp, r3                   \n"  /* restore sp              */
+			"mov lr, r4                      \n"  /* restore lr              */
+			:: [scr] "r" (scr), [nsacr] "r" (nsacr) : "r3");
 	}
+
+	void * pt_phys =
+		Kernel::core_pd()->platform_pd()->translation_table_phys();
+
+
+	using Ttable = Genode::Level_1_stage_2_translation_table;
+	constexpr int tt_align  = 1 << Ttable::ALIGNM_LOG2;
+	Ttable            * tt   = unmanaged_singleton<Ttable, tt_align>();
+	tt->insert_translation(0, 0, 0x80000000,
+						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
+	tt->insert_translation(0x80000000, 0x80000000, 0x40000000,
+						   Page_flags::apply_mapping(true, CACHED, false), 0);
+	tt->insert_translation(0xc0000000, 0xc0000000, 0x40000000,
+						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
 
 	/* set hyp exception vector */
 	void *v = &_hyp_kernel_entry;
 	asm volatile ("mcr p15, 4, %[v], c12, c0, 0" :: [v]"r"(v));
 
+	/* set HTTBR */
+	asm volatile ("mcrr p15, 4, %[v0], %[v1], c2"
+	              :: [v0]"r"(pt_phys), [v1]"r"(0));
+
+	/* set HTCR */
+	asm volatile ("mcr p15, 4, %[v], c2, c0, 2"
+	              :: [v] "r" (Cpu::Ttbcr::init_virt_kernel()));
+
+	/* set VTTBR */
+	asm volatile ("mcrr p15, 6, %[v0], %[v1], c2"
+	              :: [v0]"r"(tt), [v1]"r"(0));
+
+	/* set VTCR */
+	asm volatile ("mcr p15, 4, %[v], c2, c1, 2"
+	              :: [v] "r" (Cpu::Ttbcr::init_virt_kernel() | (1 << 6) /* SL0 == 1 */));
+
+	/* set HMAIR0 */
+	asm volatile ("mcr p15, 4, %[v], c10, c2, 0" :: [v] "r" (0xff0044) : );
+
+	/* set HSCTRL (enable caches and MMU) */
+	asm volatile ("mcr p15, 4, %[v], c1, c0, 0" ::
+	              [v] "r" ((1 << 12) | (1 << 2) | 1) : );
+
+	unsigned long hcr = 1;
+	asm volatile ("mcr p15, 4, %[v], c1, c1, 0" :: [v] "r" (hcr));
+
 	/* hyp return to supervisor mode */
 	asm volatile (
 		"mov r0, sp        \n"
 		"mov r1, lr        \n"
+		"mov sp, %[stack]  \n"
 		"adr r2, 1f        \n"
 		"msr elr_hyp, r2   \n"
 		"mov r2, #211      \n"
 		"msr spsr_cxfs, r2 \n"
 		"eret              \n"
 		"1: mov sp, r0     \n"
-		"mov lr, r1        \n" ::: "r0", "r1", "r2");
+		"mov lr, r1        \n"
+		:: [stack] "r" (&hyp_mode_stack) : "r0", "r1", "r2");
 }

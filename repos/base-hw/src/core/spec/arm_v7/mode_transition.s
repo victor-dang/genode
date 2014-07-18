@@ -258,8 +258,8 @@
 
 
 .macro _hyp_to_kernel exception_type
-	cps #SVC_MODE
-	mov r0, #\exception_type
+	mov r2, #\exception_type
+	mrs r1, ELR_hyp
 	b hyp_trap
 .endm /* _hyp_to_kernel */
 
@@ -473,6 +473,13 @@
 	_hyp_dab_entry: _hyp_to_kernel 4
 	_hyp_trp_entry: _hyp_to_kernel 5
 	_hyp_irq_entry: _hyp_to_kernel 6
+
+	/* kernel must jump to this point to switch to a vm */
+	.p2align 2
+	.global _mt_hyp_entry_pic
+	_mt_hyp_entry_pic:
+		mov r0, #0
+		hvc #0
 
 	/* end of the mode transition code */
 	.global _mt_end
