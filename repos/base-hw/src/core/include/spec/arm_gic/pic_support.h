@@ -175,6 +175,7 @@ class Genode::Arm_gic
 		typedef Arm_gic_cpu_interface Cpui;
 		typedef Arm_gic_distributor   Distr;
 
+		static constexpr unsigned ipi         = 1;
 		static constexpr unsigned min_spi     = 32;
 		static constexpr unsigned spurious_id = 1023;
 
@@ -216,6 +217,10 @@ class Genode::Arm_gic
 		 */
 		void init_processor_local()
 		{
+			_cpui.write<Cpui::Ctlr>(0);
+
+			_distr.write<Distr::Igroupr::Group_status>(1, ipi);
+
 			/* disable the priority filter */
 			_cpui.write<Cpui::Pmr::Priority>(_distr.min_priority());
 
@@ -223,7 +228,7 @@ class Genode::Arm_gic
 			_cpui.write<Cpui::Bpr::Binary_point>(~0);
 
 			/* enable device */
-			_cpui.write<Cpui::Ctlr::Enable>(1);
+			_cpui.write<Cpui::Ctlr>(0b1011);
 		}
 
 		/**
@@ -273,8 +278,9 @@ class Genode::Arm_gic
 		 * \param irq_id  kernel name of the IRQ
 		 * \param cpu_id  kernel name of the CPU
 		 */
-		bool is_ip_interrupt(unsigned const irq_id, unsigned const cpu_id) {
-			return irq_id == _ipi(cpu_id); }
+		bool is_ip_interrupt(unsigned const interrupt_id,
+		                     unsigned const processor_id) {
+			return interrupt_id == ipi; }
 
 		/**
 		 * Raise inter-processor IRQ of the CPU with kernel name 'cpu_id'
@@ -283,7 +289,7 @@ class Genode::Arm_gic
 		{
 			typedef Distr::Sgir Sgir;
 			Sgir::access_t sgir = 0;
-			Sgir::Sgi_int_id::set(sgir, _ipi(cpu_id));
+			Sgir::Sgi_int_id::set(sgir, ipi);
 			Sgir::Cpu_target_list::set(sgir, 1 << cpu_id);
 			_distr.write<Sgir>(sgir);
 		}

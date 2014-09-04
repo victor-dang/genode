@@ -257,6 +257,12 @@
 .endm /* _kernel_to_vm */
 
 
+.macro _hyp_to_kernel exception_type
+	cps #SVC_MODE
+	mov r0, #\exception_type
+	b hyp_trap
+.endm /* _hyp_to_kernel */
+
 /**********************************
  ** Linked into the text section **
  **********************************/
@@ -414,7 +420,7 @@
 	ldm sp, {r0, r1, pc}^
 
 	/*
-	 * On vm exceptions the CPU has to jump to one of the following
+	 * On trustzone exceptions the CPU has to jump to one of the following
 	 * 7 entry vectors to switch to a kernel context.
 	 */
 	.p2align 5
@@ -442,6 +448,31 @@
 	.global _mt_vm_entry_pic
 	_mt_vm_entry_pic:
 		_kernel_to_vm
+
+
+	/*
+	 * On virtualization exceptions the CPU has to jump to one of the following
+	 * 7 entry vectors to switch to a kernel context.
+	 */
+	.p2align 4
+	.global _hyp_kernel_entry
+	_hyp_kernel_entry:
+		b _hyp_rst_entry
+		b _hyp_und_entry    /* undefined instruction  */
+		b _hyp_svc_entry    /* hypervisor call        */
+		b _hyp_pab_entry    /* prefetch abort         */
+		b _hyp_dab_entry    /* data abort             */
+		b _hyp_trp_entry    /* hypervisor trap        */
+		b _hyp_irq_entry    /* interrupt request      */
+		_hyp_to_kernel 7    /* fast interrupt request */
+
+	_hyp_rst_entry: _hyp_to_kernel 0
+	_hyp_und_entry: _hyp_to_kernel 1
+	_hyp_svc_entry: _hyp_to_kernel 2
+	_hyp_pab_entry: _hyp_to_kernel 3
+	_hyp_dab_entry: _hyp_to_kernel 4
+	_hyp_trp_entry: _hyp_to_kernel 5
+	_hyp_irq_entry: _hyp_to_kernel 6
 
 	/* end of the mode transition code */
 	.global _mt_end

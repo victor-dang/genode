@@ -4,6 +4,9 @@
 # \date   2013-01-09
 #
 
+# include implied specs
+include $(call select_from_repositories,mk/spec-arm_v7a.mk)
+
 # denote wich specs are also fullfilled by this spec
 SPECS += arm_v7a
 
@@ -20,8 +23,5 @@ REP_INC_DIR += include/cortex_a15
 #
 # Reference: https://github.com/genodelabs/genode/issues/810
 #
-#CC_OPT += -mcpu=cortex-a15
-
-# include implied specs
-include $(call select_from_repositories,mk/spec-arm_v7a.mk)
-
+CC_OPT  += -mcpu=cortex-a15
+CC_MARCH =

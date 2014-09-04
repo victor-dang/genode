@@ -229,6 +229,8 @@ extern "C" void init_kernel_uniprocessor()
 	/* initialize all processor objects */
 	processor_pool();
 
+	Kernel::pic();
+
 	/* go multiprocessor mode */
 	Processor::start_secondary_processors(&_start_secondary_processors);
 }
@@ -251,6 +253,7 @@ extern "C" void init_kernel_multiprocessor()
 	Processor::data_synchronization_barrier();
 
 	/* initialize processor in physical mode */
+	Kernel::pic()->init_processor_local();
 	Processor::init_phys_kernel();
 
 	/* switch to core address space */
@@ -286,7 +289,7 @@ extern "C" void init_kernel_multiprocessor()
 	processor->init_processor_local();
 
 	/* locally initialize interrupt controller */
-	pic()->init_processor_local();
+	//pic()->init_processor_local();
 	pic()->unmask(Timer::interrupt_id(processor_id), processor_id);
 
 	/* as primary processor create the core main thread */
@@ -341,6 +344,13 @@ extern "C" void kernel()
 	unsigned const processor_id = Processor::executing_id();
 	Processor * const processor = processor_pool()->processor(processor_id);
 	processor->exception();
+}
+
+
+extern "C" void hyp_trap() {
+	register int exc asm("r0");
+	PINF("HYP EXCEPTION %d", exc);
+	while (1) ;
 }
 
 

@@ -18,14 +18,15 @@ using namespace Genode;
 
 void Arm_gic::_init()
 {
-	/* disable device */
-	_distr.write<Distr::Ctlr::Enable>(0);
+	_distr.write<Distr::Ctlr>(0);
 
 	/* configure every shared peripheral interrupt */
 	for (unsigned i = min_spi; i <= _max_irq; i++) {
+		_distr.write<Distr::Igroupr::Group_status>(1, i);
 		_distr.write<Distr::Icfgr::Edge_triggered>(0, i);
 		_distr.write<Distr::Ipriorityr::Priority>(0, i);
 	}
+
 	/* enable device */
-	_distr.write<Distr::Ctlr::Enable>(1);
+	_distr.write<Distr::Ctlr>(0x3);
 }
