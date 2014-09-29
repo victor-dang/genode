@@ -44,11 +44,16 @@ class Kernel::Vm : public Object<Vm, MAX_VMS, Vm_ids, vm_ids, vm_pool>,
 
 		struct Vm_state : Genode::Cpu_state_modes
 		{
-			Genode::addr_t dfar;
+			Genode::addr_t table;
+			Genode::addr_t vm_id;
+			Genode::addr_t stclr;
+			Genode::addr_t hstr;
+			Genode::addr_t hcr;
 		};
 
 		Vm_state       * const _state;
 		Signal_context * const _context;
+		void           * const _table;
 
 	public:
 
@@ -57,15 +62,17 @@ class Kernel::Vm : public Object<Vm, MAX_VMS, Vm_ids, vm_ids, vm_pool>,
 		 *
 		 * \param state    initial CPU state
 		 * \param context  signal for VM exceptions other than interrupts
+		 * \param table    translation table for guest to host physical memory
 		 */
 		Vm(void           * const state,
-		   Signal_context * const context)
+		   Signal_context * const context,
+		   void           * const table)
 		:
 			Processor_client(processor_pool()->primary_processor(),
 			                 Priority::MIN),
 			_state((Vm_state * const)state),
-			_context(context)
-		{ }
+			_context(context),
+			_table(table) { }
 
 
 		/****************
@@ -88,8 +95,6 @@ class Kernel::Vm : public Object<Vm, MAX_VMS, Vm_ids, vm_ids, vm_pool>,
 			case Genode::Cpu_state::FAST_INTERRUPT_REQUEST:
 				_interrupt(processor_id);
 				return;
-			case Genode::Cpu_state::DATA_ABORT:
-				_state->dfar = Processor::Dfar::read();
 			default:
 				Processor_client::_unschedule();
 				_context->submit(1);
@@ -98,6 +103,10 @@ class Kernel::Vm : public Object<Vm, MAX_VMS, Vm_ids, vm_ids, vm_pool>,
 
 		void proceed(unsigned const processor_id)
 		{
+			_state->vm_id = id() << 16;
+			_state->table = (addr_t)_table;
+			_state->hstr  = 0xbe6f;
+			_state->hcr   = 0xc306039;
 			mtc()->continue_vm(_state, processor_id);
 		}
 };

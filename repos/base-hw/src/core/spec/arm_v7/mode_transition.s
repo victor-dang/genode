@@ -189,13 +189,13 @@
 
 
 /**
- * Switch from an interrupted VM to the kernel context
+ * Switch from nonsecure into secure world
  *
  * \param exception_type  immediate exception type ID
  * \param pc_adjust       immediate value that gets subtracted from the
  *                        vm's PC before it gets saved
  */
-.macro _vm_to_kernel exception_type, pc_adjust
+.macro _nonsecure_to_secure exception_type, pc_adjust
 	ldr   sp, _mt_client_context_ptr   /* load context pointer            */
 	stmia sp, {r0-lr}^                 /* save user regs r0-r12,sp,lr     */
 	add   r0, sp, #15*4
@@ -205,23 +205,8 @@
 	stmia r0!, {lr}                    /* save pc                         */
 	mrs   r1, spsr                     /* spsr to r0                      */
 	mov   r2, #\exception_type         /* exception reason to r1          */
-	stmia r0!, {r1-r2}                 /* save spsr, and exception reason */
-	mrc   p15, 0, r3, c6, c0, 0        /* move DFAR  to r3                */
-	mrc   p15, 0, r4, c2, c0, 0        /* move TTBR0 to r4                */
-	mrc   p15, 0, r5, c2, c0, 1        /* move TTBR1 to r5                */
-	mrc   p15, 0, r6, c2, c0, 2        /* move TTBRC to r6                */
-	mov   r1, #0
-	mcr   p15, 0, r1, c1, c1, 0        /* disable non-secure bit          */
-	_save_bank 27                      /* save undefined banks            */
-	_save_bank 19                      /* save supervisor banks           */
-	_save_bank 23                      /* save abort banks                */
-	_save_bank 18                      /* save irq banks                  */
-	_save_bank 17                      /* save fiq banks                  */
-	stmia r0!, {r8-r12}                /* save fiq r8-r12                 */
-	stmia r0!, {r3-r6}                 /* save MMU registers              */
-	b _common_client_to_kernel_pic
-.endm /* _vm_to_kernel */
-
+	b     _nonsecure_kernel_entry
+.endm /* _non_to_secure */
 
 /**
  * Restore sp, lr and spsr register banks of specified exception mode
@@ -234,9 +219,9 @@
 
 
 /**
- * Switch from kernel context to a VM
+ * Switch from secure into nonsecure world
  */
-.macro _kernel_to_vm
+.macro _secure_to_nonsecure
 	ldr   r0, _mt_client_context_ptr   /* get vm context pointer               */
 	add   r0, r0, #18*4         /* add offset of banked modes           */
 	_restore_bank 27            /* load undefined banks                 */
@@ -254,14 +239,20 @@
 	mcr   p15, 0, lr, c1, c1, 0 /* enable EA, FIQ, and NS bit in SCTRL  */
 	ldr   lr, [sp, #15*4]       /* load vm's ip                         */
 	subs  pc, lr, #0
-.endm /* _kernel_to_vm */
+.endm /* _secure_to_nonsecure */
 
 
-.macro _hyp_to_kernel exception_type
-	mov r2, #\exception_type
-	mrs r1, ELR_hyp
-	b hyp_trap
-.endm /* _hyp_to_kernel */
+.macro _vm_exit exception_type
+	str   r0, [sp]
+	mrc   p15, 4, r0, c1, c1, 0 /* read HCR register                    */
+	tst   r0, #1                /* check VM bit                         */
+	ldreq r0, [sp]
+	beq   _kernel_to_vm
+	mov   r0, #\exception_type
+	str   r0, [sp, #17*4]
+	b     _vm_to_kernel
+.endm /* _vm_exit */
+
 
 /**********************************
  ** Linked into the text section **
@@ -419,6 +410,123 @@
 	/* apply user r0-r1 and user pc which implies application of spsr */
 	ldm sp, {r0, r1, pc}^
 
+
+	_nonsecure_kernel_entry:
+		stmia r0!, {r1-r2}                 /* save spsr, and exception reason */
+		mrc   p15, 0, r3, c6, c0, 0        /* move DFAR  to r3                */
+		mrc   p15, 0, r4, c2, c0, 0        /* move TTBR0 to r4                */
+		mrc   p15, 0, r5, c2, c0, 1        /* move TTBR1 to r5                */
+		mrc   p15, 0, r6, c2, c0, 2        /* move TTBRC to r6                */
+		mov   r1, #0
+		mcr   p15, 0, r1, c1, c1, 0        /* disable non-secure bit          */
+		_save_bank 27                      /* save undefined banks            */
+		_save_bank 19                      /* save supervisor banks           */
+		_save_bank 23                      /* save abort banks                */
+		_save_bank 18                      /* save irq banks                  */
+		_save_bank 17                      /* save fiq banks                  */
+		stmia r0!, {r8-r12}                /* save fiq r8-r12                 */
+		stmia r0!, {r3-r6}                 /* save MMU registers              */
+		b _common_client_to_kernel_pic
+
+	/* kernel must jump to this point to switch to a vm */
+	.global _mt_nonsecure_entry_pic
+	_mt_nonsecure_entry_pic:
+		_secure_to_nonsecure
+
+	_kernel_to_vm:
+		msr   elr_hyp,   r2
+		msr   spsr_cxfs, r3           /* save cpsr to be load when switching */
+		mcrr  p15, 6, r5, r6, c2      /* write VTTBR                         */
+		mcr   p15, 0, r7, c1, c0, 0   /* write SCTRL                         */
+		mcr   p15, 4, r8, c1, c1, 3   /* write HSTR                          */
+		mcr   p15, 4, r9, c1, c1, 0   /* write HCR register                  */
+		mcr   p15, 0, r12, c2, c0, 2  /* write TTBRC                         */
+		sub   sp, r0, #46*4
+		ldm   r0, {r1-r11}
+		mcr   p15, 0, r1, c2, c0, 0   /* write TTBR0                         */
+		mcr   p15, 0, r2, c2, c0, 1   /* write TTBR1                         */
+		mcr   p15, 0, r3, c10, c2, 0  /* write PRRR                          */
+		mcr   p15, 0, r4, c10, c2, 1  /* write NMRR                          */
+		mcr   p15, 0, r5, c3, c0, 0   /* write DACR                          */
+		mcr   p15, 0, r6, c5, c0, 0   /* write DFSR                          */
+		mcr   p15, 0, r7, c5, c0, 1   /* write IFSR                          */
+		mcr   p15, 0, r8, c5, c1, 0   /* write ADFSR                         */
+		mcr   p15, 0, r9, c5, c1, 1   /* write AIFSR                         */
+		mcr   p15, 0, r10, c6, c0, 0  /* write DFAR                          */
+		mcr   p15, 0, r11, c6, c0, 2  /* write IFAR                          */
+		ldmia sp, {r0-r12}            /* load vm's r0-r12                    */
+		eret
+
+	_vm_to_kernel:
+		add r0, sp, #1*4
+		stmia r0!, {r1-r12}         /* save regs r1-r12                     */
+		mov r1, #0
+		mcrr p15, 6, r1, r1, c2     /* write VTTBR                          */
+		mcr p15, 4, r1, c1, c1, 0   /* write HCR register                   */
+		mcr p15, 4, r1, c1, c1, 3   /* write HSTR register                  */
+		mrs r1, ELR_hyp             /* read ip                              */
+		mrs r2, spsr                /* read cpsr                            */
+		mrc p15, 0, r3, c1, c0, 0   /* read SCTRL                           */
+		mrc p15, 4, r4, c5, c2, 0   /* read HSR                             */
+		mrc p15, 4, r5, c6, c0, 4   /* read HPFAR                           */
+		mrc p15, 4, r6, c6, c0, 0   /* read HDFAR                           */
+		mrc p15, 4, r7, c6, c0, 2   /* read HIFAR                           */
+		mrc p15, 0, r8, c2, c0, 2   /* read TTBRC                           */
+		mrc p15, 0, r9, c2, c0, 0   /* read TTBR0                           */
+		adr r10, _mt_master_context_begin
+		_restore_kernel_sp r10, r11, r12
+		add r10, r10, #CIDR_OFFSET
+		ldmia r10!, {r11-r12}
+		_switch_protection_domain r11, r12
+		ldmia r10!, {r11-r12}
+		mcr p15, 0, r11, c1, c0, 0  /* write SCTRL                          */
+		mcr p15, 0, r12, c2, c0, 2  /* write TTBRC                          */
+		ldm r10, {r11-r12}
+		mcr p15, 0, r11, c10, c2, 0 /* write MAIR0                          */
+		mcr p15, 0, r12, c3, c0, 0  /* write DACR                           */
+		cps #SVC_MODE
+		stmia r0, {r13-r14}^        /* save user regs sp,lr                 */
+		add r0, r0, #2*4
+		stmia r0!, {r1-r2}          /* save ip, cpsr                        */
+		add r0, r0, #1*4
+		_save_bank UND_MODE         /* save undefined banks                 */
+		_save_bank SVC_MODE         /* save supervisor banks                */
+		_save_bank ABT_MODE         /* save abort banks                     */
+		_save_bank IRQ_MODE         /* save irq banks                       */
+		_save_bank FIQ_MODE         /* save fiq banks                       */
+		stmia r0!, {r8-r12}         /* save fiq r8-r12                      */
+		cps #SVC_MODE
+		add r0, r0, #2*4
+		mrc p15, 0, r10, c2, c0, 1  /* read TTBR1                           */
+		stm r0!, {r3-r10}
+		add r0, r0, #3*4
+		mrc p15, 0, r1, c5, c0, 0   /* read DFSR                            */
+		mrc p15, 0, r2, c5, c0, 1   /* read IFSR                            */
+		mrc p15, 0, r3, c5, c1, 0   /* read ADFSR                           */
+		mrc p15, 0, r4, c5, c1, 1   /* read AIFSR                           */
+		mrc p15, 0, r5, c6, c0, 0   /* read DFAR                            */
+		mrc p15, 0, r6, c6, c0, 2   /* read IFAR                            */
+		stm r0, {r1-r6}
+		b _common_client_to_kernel_pic
+
+	/* kernel must jump to this point to switch to a vm */
+	.global _mt_vm_entry_pic
+	_mt_vm_entry_pic:
+		_get_client_context_ptr r0, lr
+		add   r0, r0, #SP_OFFSET
+		ldm   r0, {r13 - r14}^
+		add   r0, r0, #2*4
+		ldmia r0!, {r2 - r4}
+		_restore_bank UND_MODE
+		_restore_bank SVC_MODE
+		_restore_bank ABT_MODE
+		_restore_bank IRQ_MODE
+		_restore_bank FIQ_MODE
+		ldmia r0!, {r8 - r12}
+		cps   #SVC_MODE
+		ldm   r0!, {r5 - r12}
+		hvc   #0
+
 	/*
 	 * On trustzone exceptions the CPU has to jump to one of the following
 	 * 7 entry vectors to switch to a kernel context.
@@ -433,22 +541,15 @@
 		b _mon_dab_entry           /* data abort             */
 		nop                        /* reserved               */
 		b _mon_irq_entry           /* interrupt request      */
-		_vm_to_kernel FIQ_TYPE, 4  /* fast interrupt request */
+		_nonsecure_to_secure FIQ_TYPE, 4  /* fast interrupt request */
 
 		/* PICs that switch from a vm exception to the kernel */
-		_mon_rst_entry: _vm_to_kernel RST_TYPE, 0
-		_mon_und_entry: _vm_to_kernel UND_TYPE, 4
-		_mon_svc_entry: _vm_to_kernel SVC_TYPE, 0
-		_mon_pab_entry: _vm_to_kernel PAB_TYPE, 4
-		_mon_dab_entry: _vm_to_kernel DAB_TYPE, 8
-		_mon_irq_entry: _vm_to_kernel IRQ_TYPE, 4
-
-	/* kernel must jump to this point to switch to a vm */
-	.p2align 2
-	.global _mt_vm_entry_pic
-	_mt_vm_entry_pic:
-		_kernel_to_vm
-
+		_mon_rst_entry: _nonsecure_to_secure RST_TYPE, 0
+		_mon_und_entry: _nonsecure_to_secure UND_TYPE, 4
+		_mon_svc_entry: _nonsecure_to_secure SVC_TYPE, 0
+		_mon_pab_entry: _nonsecure_to_secure PAB_TYPE, 4
+		_mon_dab_entry: _nonsecure_to_secure DAB_TYPE, 8
+		_mon_irq_entry: _nonsecure_to_secure IRQ_TYPE, 4
 
 	/*
 	 * On virtualization exceptions the CPU has to jump to one of the following
@@ -464,22 +565,15 @@
 		b _hyp_dab_entry    /* data abort             */
 		b _hyp_trp_entry    /* hypervisor trap        */
 		b _hyp_irq_entry    /* interrupt request      */
-		_hyp_to_kernel 7    /* fast interrupt request */
+		_vm_exit 7          /* fast interrupt request */
 
-	_hyp_rst_entry: _hyp_to_kernel 0
-	_hyp_und_entry: _hyp_to_kernel 1
-	_hyp_svc_entry: _hyp_to_kernel 2
-	_hyp_pab_entry: _hyp_to_kernel 3
-	_hyp_dab_entry: _hyp_to_kernel 4
-	_hyp_trp_entry: _hyp_to_kernel 5
-	_hyp_irq_entry: _hyp_to_kernel 6
-
-	/* kernel must jump to this point to switch to a vm */
-	.p2align 2
-	.global _mt_hyp_entry_pic
-	_mt_hyp_entry_pic:
-		mov r0, #0
-		hvc #0
+	_hyp_rst_entry: _vm_exit 1
+	_hyp_und_entry: _vm_exit 2
+	_hyp_svc_entry: _vm_exit 3
+	_hyp_pab_entry: _vm_exit 4
+	_hyp_dab_entry: _vm_exit 5
+	_hyp_irq_entry: _vm_exit 6
+	_hyp_trp_entry: _vm_exit 8
 
 	/* end of the mode transition code */
 	.global _mt_end

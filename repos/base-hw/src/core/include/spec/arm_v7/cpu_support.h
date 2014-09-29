@@ -18,6 +18,8 @@
 #include <spec/arm/cpu_support.h>
 #include <board.h>
 
+extern Genode::addr_t _mt_master_context_begin;
+
 /**
  * Helpers that increase readability of MCR and MRC commands
  */
@@ -141,7 +143,7 @@ namespace Genode
 
 class Genode::Arm_v7 : public Arm
 {
-	protected:
+	public:
 
 		/**
 		 * Secure configuration register
@@ -218,11 +220,11 @@ class Genode::Arm_v7 : public Arm
 
 		struct Mair0 : Register<32>
 		{
-			static void init()
-			{
-				access_t v = 0xff0044;
-				asm volatile ("mcr p15, 0, %[v], c10, c2, 0" :: [v]"r"(v) : );
-			}
+			static void write(access_t v) {
+				asm volatile ("mcr p15, 0, %[v], c10, c2, 0" :: [v]"r"(v) : ); }
+
+			static access_t init_virt_kernel() {
+				return 0xff0044; }
 		};
 
 	public:
@@ -242,7 +244,7 @@ class Genode::Arm_v7 : public Arm
 		static void
 		init_virt_kernel(addr_t const table, unsigned const process_id)
 		{
-			Mair0::init();
+			Mair0::write(Mair0::init_virt_kernel());
 			Cidr::write(process_id);
 			Dacr::write(Dacr::init_virt_kernel());
 			Ttbr0::write(Ttbr0::init(table, 1));

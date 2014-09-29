@@ -26,6 +26,8 @@ namespace Genode {
 	{
 			static const char *service_name() { return "VM"; }
 
+			class Invalid_dataspace : Exception { };
+
 			/**
 			 * Destructor
 			 */
@@ -51,6 +53,9 @@ namespace Genode {
 			 */
 			virtual void pause(void) {}
 
+			virtual void attach(Dataspace_capability ds, addr_t vm_addr) = 0;
+			virtual void detach(addr_t vm_addr, size_t size) = 0;
+
 
 			/*********************
 			 ** RPC declaration **
@@ -61,8 +66,12 @@ namespace Genode {
 			           Signal_context_capability);
 			GENODE_RPC(Rpc_run, void, run);
 			GENODE_RPC(Rpc_pause, void, pause);
+			GENODE_RPC_THROW(Rpc_attach, void, attach,
+			                 GENODE_TYPE_LIST(Invalid_dataspace),
+		                     Dataspace_capability, addr_t);
+			GENODE_RPC(Rpc_detach, void, detach, addr_t, size_t);
 			GENODE_RPC_INTERFACE(Rpc_cpu_state, Rpc_exception_handler,
-			                     Rpc_run, Rpc_pause);
+			                     Rpc_run, Rpc_pause, Rpc_attach, Rpc_detach);
 	};
 }
 

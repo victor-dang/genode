@@ -26,7 +26,6 @@ namespace Kernel
 	unsigned pd_alignment_log2();
 	size_t   signal_context_size();
 	size_t   signal_receiver_size();
-	size_t   vm_size();
 
 	/**
 	 * Kernel names of the kernel calls
@@ -296,10 +295,11 @@ namespace Kernel
 	 * Regaining of the supplied memory is not supported by now.
 	 */
 	inline unsigned new_vm(void * const dst, void * const state,
-	                  unsigned const signal_context_id)
+	                       unsigned const signal_context_id,
+	                       void * const table)
 	{
 		return call(call_id_new_vm(), (Call_arg)dst, (Call_arg)state,
-		            signal_context_id);
+		            (Call_arg)table, signal_context_id);
 	}
 
 

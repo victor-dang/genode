@@ -63,12 +63,12 @@ Cpu::User_context::User_context() { cpsr = Psr::init_user(); }
 
 /* hypervisor exception vector address */
 extern void* _hyp_kernel_entry;
-extern void* _mt_hyp_entry_pic;
+extern void* _mt_vm_entry_pic;
 
 static unsigned char hyp_mode_stack[1024];
 
 Genode::addr_t Genode::Board::vm_entry() {
-	return (addr_t) &_mt_hyp_entry_pic; }
+	return (addr_t) &_mt_vm_entry_pic; }
 
 void Genode::Board::prepare_kernel()
 {
@@ -93,26 +93,25 @@ void Genode::Board::prepare_kernel()
 			"subs pc, lr, #0                 \n"  /* exception return        */
 			"1: mov sp, r3                   \n"  /* restore sp              */
 			"mov lr, r4                      \n"  /* restore lr              */
-			:: [scr] "r" (scr), [nsacr] "r" (nsacr) : "r3");
+			:: [scr] "r" (scr), [nsacr] "r" (nsacr) : "r3", "r4");
 	}
-
-	void * pt_phys =
-		Kernel::core_pd()->platform_pd()->translation_table_phys();
-
-
-	using Ttable = Genode::Level_1_stage_2_translation_table;
-	constexpr int tt_align  = 1 << Ttable::ALIGNM_LOG2;
-	Ttable            * tt   = unmanaged_singleton<Ttable, tt_align>();
-	tt->insert_translation(0, 0, 0x80000000,
-						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
-	tt->insert_translation(0x80000000, 0x80000000, 0x40000000,
-						   Page_flags::apply_mapping(true, CACHED, false), 0);
-	tt->insert_translation(0xc0000000, 0xc0000000, 0x40000000,
-						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
 
 	/* set hyp exception vector */
 	void *v = &_hyp_kernel_entry;
 	asm volatile ("mcr p15, 4, %[v], c12, c0, 0" :: [v]"r"(v));
+
+	void * pt_phys =
+		Kernel::core_pd()->platform_pd()->translation_table_phys();
+
+//	using Ttable = Genode::Level_1_stage_2_translation_table;
+//	constexpr int tt_align  = 1 << Ttable::ALIGNM_LOG2;
+//	Ttable            * tt   = unmanaged_singleton<Ttable, tt_align>();
+//	tt->insert_translation(0, 0, 0x80000000,
+//						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
+//	tt->insert_translation(0x80000000, 0x80000000, 0x40000000,
+//						   Page_flags::apply_mapping(true, CACHED, false), 0);
+//	tt->insert_translation(0xc0000000, 0xc0000000, 0x40000000,
+//						   Page_flags::apply_mapping(true, UNCACHED, true), 0);
 
 	/* set HTTBR */
 	asm volatile ("mcrr p15, 4, %[v0], %[v1], c2"
@@ -122,9 +121,15 @@ void Genode::Board::prepare_kernel()
 	asm volatile ("mcr p15, 4, %[v], c2, c0, 2"
 	              :: [v] "r" (Cpu::Ttbcr::init_virt_kernel()));
 
-	/* set VTTBR */
-	asm volatile ("mcrr p15, 6, %[v0], %[v1], c2"
-	              :: [v0]"r"(tt), [v1]"r"(0));
+//	/* set VTTBR */
+//	asm volatile ("mcrr p15, 6, %[v0], %[v1], c2"
+//	              :: [v0]"r"(tt), [v1]"r"(0));
+
+	/* set VBAR for Linux temporarily */
+//	asm volatile("MCR p15, 0, %0, c12, c0, 0" :: "r" (0x8029e660));
+
+	/* HCPTR */
+	asm volatile("MCR p15, 4, %0, c1, c1, 2" :: "r" (0x4010bfff));
 
 	/* set VTCR */
 	asm volatile ("mcr p15, 4, %[v], c2, c1, 2"
@@ -137,8 +142,8 @@ void Genode::Board::prepare_kernel()
 	asm volatile ("mcr p15, 4, %[v], c1, c0, 0" ::
 	              [v] "r" ((1 << 12) | (1 << 2) | 1) : );
 
-	unsigned long hcr = 1;
-	asm volatile ("mcr p15, 4, %[v], c1, c1, 0" :: [v] "r" (hcr));
+//	unsigned long hcr = 1;
+//	asm volatile ("mcr p15, 4, %[v], c1, c1, 0" :: [v] "r" (hcr));
 
 	/* hyp return to supervisor mode */
 	asm volatile (

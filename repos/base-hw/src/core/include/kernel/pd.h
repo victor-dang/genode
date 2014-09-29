@@ -121,6 +121,10 @@ class Kernel::Cpu_context : Cpu::Context
 {
 	private:
 
+		addr_t _sctlr;
+		addr_t _ttbrc;
+		addr_t _mair0;
+
 		/**
 		 * Hook for environment specific initializations
 		 *

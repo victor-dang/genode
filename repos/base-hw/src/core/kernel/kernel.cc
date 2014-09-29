@@ -183,7 +183,6 @@ namespace Kernel
 	size_t thread_size()          { return sizeof(Thread); }
 	size_t signal_context_size()  { return sizeof(Signal_context); }
 	size_t signal_receiver_size() { return sizeof(Signal_receiver); }
-	size_t vm_size()              { return sizeof(Vm); }
 	unsigned pd_alignm_log2() { return Genode::Translation_table::ALIGNM_LOG2; }
 	size_t pd_size() { return sizeof(Genode::Translation_table) + sizeof(Pd); }
 
@@ -290,7 +289,7 @@ extern "C" void init_kernel_multiprocessor()
 
 	/* locally initialize interrupt controller */
 	//pic()->init_processor_local();
-	pic()->unmask(Timer::interrupt_id(processor_id), processor_id);
+	//pic()->unmask(Timer::interrupt_id(processor_id), processor_id);
 
 	/* as primary processor create the core main thread */
 	if (Processor::primary_id() == processor_id)
@@ -360,5 +359,8 @@ Kernel::Cpu_context::Cpu_context(Genode::Translation_table * const table)
 	_init(STACK_SIZE, (addr_t)table);
 	sp = (addr_t)kernel_stack;
 	ip = (addr_t)kernel;
+	_sctlr = Cpu::Sctlr::init_virt_kernel();
+	_ttbrc = Cpu::Ttbcr::init_virt_kernel();
+	_mair0 = Cpu::Mair0::init_virt_kernel();
 	core_pd()->admit(this);
 }

@@ -28,12 +28,13 @@ install_config {
 		<any-service><any-child/><parent/></any-service>
 	</default-route>
 	<start name="vmm">
-		<resource name="RAM" quantum="4M"/>
+		<resource name="RAM" quantum="512M"/>
 	</start>
 </config>
 }
 
-build_boot_image "core init vmm test-kernel"
+#exec [cross_dev_prefix]objcopy -O binary bin/test-kernel bin/kernel.img
+build_boot_image "core init vmm linux dtb"
 
 #
 # Execute test case
