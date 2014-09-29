@@ -200,6 +200,12 @@ class Genode::Arm
 				asm volatile ("mcr p15, 0, %0, c7, c10, 1" :: "r" (v) : ); }
 		};
 
+		struct Dccimvac : Register<32>
+		{
+			static void write(access_t const v) {
+				asm volatile ("mcr p15, 0, %0, c7, c14, 1" :: "r" (v) : ); }
+		};
+
 		/**
 		 * Context identification register
 		 */
@@ -495,7 +501,7 @@ class Genode::Arm
 		{
 			addr_t const top = base + size;
 			base &= line_align_mask;
-			for (; base < top; base += line_size) { Dccmvac::write(base); }
+			for (; base < top; base += line_size) { Dccimvac::write(base); }
 		}
 
 		/**
