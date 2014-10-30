@@ -219,7 +219,8 @@ class Genode::Arm_gic
 		{
 			_cpui.write<Cpui::Ctlr>(0);
 
-			_distr.write<Distr::Igroupr::Group_status>(1, ipi);
+			for (unsigned i = 0; i < min_spi; i++)
+				_distr.write<Distr::Igroupr::Group_status>(1, i);
 
 			/* disable the priority filter */
 			_cpui.write<Cpui::Pmr::Priority>(_distr.min_priority());

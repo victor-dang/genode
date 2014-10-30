@@ -47,6 +47,7 @@ namespace Kernel
 	constexpr Call_arg call_id_run_vm()              { return 28; }
 	constexpr Call_arg call_id_pause_vm()            { return 29; }
 	constexpr Call_arg call_id_pause_thread()        { return 30; }
+	constexpr Call_arg call_id_bin_vm()              { return 31; }
 
 	/**
 	 * Create a domain
@@ -311,6 +312,17 @@ namespace Kernel
 	inline void run_vm(unsigned const vm_id)
 	{
 		call(call_id_run_vm(), vm_id);
+	}
+
+
+	/**
+	 * Destruct a virtual-machine
+	 *
+	 * \param vm_id  kernel name of the targeted VM
+	 */
+	inline void bin_vm(unsigned const vm_id)
+	{
+		call(call_id_bin_vm(), vm_id);
 	}
 
 

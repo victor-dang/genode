@@ -55,6 +55,7 @@ namespace Genode {
 
 			virtual void attach(Dataspace_capability ds, addr_t vm_addr) = 0;
 			virtual void detach(addr_t vm_addr, size_t size) = 0;
+			virtual void attach_pic(addr_t vm_addr) = 0;
 
 
 			/*********************
@@ -70,8 +71,10 @@ namespace Genode {
 			                 GENODE_TYPE_LIST(Invalid_dataspace),
 		                     Dataspace_capability, addr_t);
 			GENODE_RPC(Rpc_detach, void, detach, addr_t, size_t);
+			GENODE_RPC(Rpc_attach_pic, void, attach_pic, addr_t);
 			GENODE_RPC_INTERFACE(Rpc_cpu_state, Rpc_exception_handler,
-			                     Rpc_run, Rpc_pause, Rpc_attach, Rpc_detach);
+			                     Rpc_run, Rpc_pause, Rpc_attach, Rpc_detach,
+			                     Rpc_attach_pic);
 	};
 }
 

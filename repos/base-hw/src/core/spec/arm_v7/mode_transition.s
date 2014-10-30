@@ -91,9 +91,6 @@
  * \param new_ttbr0      new TTBR0 value, read/write reg
  */
 .macro _switch_protection_domain new_cidr, new_ttbr0
-	/* write CONTEXTIDR register */
-	mcr p15, 0, \new_cidr, c13, c0, 1
-
 	/* write translation-table-base register 0 */
 	lsl  \new_cidr, \new_cidr, #16
 	mcrr p15, 0, \new_ttbr0, \new_cidr, c2
@@ -442,7 +439,7 @@
 		mcr   p15, 4, r9, c1, c1, 0   /* write HCR register                  */
 		mcr   p15, 0, r12, c2, c0, 2  /* write TTBRC                         */
 		sub   sp, r0, #46*4
-		ldm   r0, {r1-r11}
+		ldm   r0!, {r1-r12}
 		mcr   p15, 0, r1, c2, c0, 0   /* write TTBR0                         */
 		mcr   p15, 0, r2, c2, c0, 1   /* write TTBR1                         */
 		mcr   p15, 0, r3, c10, c2, 0  /* write PRRR                          */
@@ -454,16 +451,23 @@
 		mcr   p15, 0, r9, c5, c1, 1   /* write AIFSR                         */
 		mcr   p15, 0, r10, c6, c0, 0  /* write DFAR                          */
 		mcr   p15, 0, r11, c6, c0, 2  /* write IFAR                          */
+		mcr   p15, 0, r12, c13, c0, 1 /* write CIDR                          */
+		ldm   r0, {r1-r4}
+		mcr   p15, 0, r1, c13, c0, 2  /* write TLS1                          */
+		mcr   p15, 0, r2, c13, c0, 3  /* write TLS2                          */
+		mcr   p15, 0, r3, c13, c0, 4  /* write TLS3                          */
+		mcr   p15, 0, r4, c1,  c0, 2  /* write CPACR                         */
 		ldmia sp, {r0-r12}            /* load vm's r0-r12                    */
 		eret
 
 	_vm_to_kernel:
 		add r0, sp, #1*4
-		stmia r0!, {r1-r12}         /* save regs r1-r12                     */
+		stmia r0, {r1-r12}         /* save regs r1-r12                     */
 		mov r1, #0
 		mcrr p15, 6, r1, r1, c2     /* write VTTBR                          */
 		mcr p15, 4, r1, c1, c1, 0   /* write HCR register                   */
 		mcr p15, 4, r1, c1, c1, 3   /* write HSTR register                  */
+		mcr p15, 0, r1, c1, c0, 2   /* write CPACR                          */
 		mrs r1, ELR_hyp             /* read ip                              */
 		mrs r2, spsr                /* read cpsr                            */
 		mrc p15, 0, r3, c1, c0, 0   /* read SCTRL                           */
@@ -473,17 +477,31 @@
 		mrc p15, 4, r7, c6, c0, 2   /* read HIFAR                           */
 		mrc p15, 0, r8, c2, c0, 2   /* read TTBRC                           */
 		mrc p15, 0, r9, c2, c0, 0   /* read TTBR0                           */
-		adr r10, _mt_master_context_begin
-		_restore_kernel_sp r10, r11, r12
-		add r10, r10, #CIDR_OFFSET
-		ldmia r10!, {r11-r12}
-		_switch_protection_domain r11, r12
-		ldmia r10!, {r11-r12}
-		mcr p15, 0, r11, c1, c0, 0  /* write SCTRL                          */
-		mcr p15, 0, r12, c2, c0, 2  /* write TTBRC                          */
-		ldm r10, {r11-r12}
-		mcr p15, 0, r11, c10, c2, 0 /* write MAIR0                          */
-		mcr p15, 0, r12, c3, c0, 0  /* write DACR                           */
+		mrc p15, 0, r10, c2, c0, 1  /* read TTBR1                           */
+		add r0, sp, #40*4           /* offset SCTRL */
+		stm r0!, {r3-r10}
+		add r0, r0, #3*4
+		mrc p15, 0, r3, c5, c0, 0   /* read DFSR                            */
+		mrc p15, 0, r4, c5, c0, 1   /* read IFSR                            */
+		mrc p15, 0, r5, c5, c1, 0   /* read ADFSR                           */
+		mrc p15, 0, r6, c5, c1, 1   /* read AIFSR                           */
+		mrc p15, 0, r7, c6, c0, 0   /* read DFAR                            */
+		mrc p15, 0, r8, c6, c0, 2   /* read IFAR                            */
+		mrc p15, 0, r9, c13, c0, 1  /* read CIDR                            */
+		mrc p15, 0, r10, c13, c0, 2 /* read TLS1                            */
+		mrc p15, 0, r11, c13, c0, 3 /* read TLS2                            */
+		mrc p15, 0, r12, c13, c0, 4 /* read TLS3                            */
+		stm r0, {r3-r12}
+		add r0, sp, #13*4
+		adr r3, _mt_master_context_begin
+		_restore_kernel_sp r3, r4, r5
+		add r3, r3, #CIDR_OFFSET
+		ldmia r3, {r4-r9}
+		_switch_protection_domain r4, r5
+		mcr p15, 0, r6, c1, c0, 0  /* write SCTRL                          */
+		mcr p15, 0, r7, c2, c0, 2  /* write TTBRC                          */
+		mcr p15, 0, r8, c10, c2, 0 /* write MAIR0                          */
+		mcr p15, 0, r9, c3, c0, 0  /* write DACR                           */
 		cps #SVC_MODE
 		stmia r0, {r13-r14}^        /* save user regs sp,lr                 */
 		add r0, r0, #2*4
@@ -496,17 +514,7 @@
 		_save_bank FIQ_MODE         /* save fiq banks                       */
 		stmia r0!, {r8-r12}         /* save fiq r8-r12                      */
 		cps #SVC_MODE
-		add r0, r0, #2*4
-		mrc p15, 0, r10, c2, c0, 1  /* read TTBR1                           */
-		stm r0!, {r3-r10}
-		add r0, r0, #3*4
-		mrc p15, 0, r1, c5, c0, 0   /* read DFSR                            */
-		mrc p15, 0, r2, c5, c0, 1   /* read IFSR                            */
-		mrc p15, 0, r3, c5, c1, 0   /* read ADFSR                           */
-		mrc p15, 0, r4, c5, c1, 1   /* read AIFSR                           */
-		mrc p15, 0, r5, c6, c0, 0   /* read DFAR                            */
-		mrc p15, 0, r6, c6, c0, 2   /* read IFAR                            */
-		stm r0, {r1-r6}
+
 		b _common_client_to_kernel_pic
 
 	/* kernel must jump to this point to switch to a vm */

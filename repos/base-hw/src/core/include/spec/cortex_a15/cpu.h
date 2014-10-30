@@ -55,6 +55,7 @@ class Genode::Cpu : public Arm_v7
 		 */
 		static unsigned primary_id();
 
+
 		/*************
 		 ** Dummies **
 		 *************/

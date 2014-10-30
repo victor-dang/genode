@@ -52,6 +52,7 @@ class Genode::Vm_session_component :
 			                  get_page_size_log2()); }
 
 		addr_t _alloc_ds(size_t &ram_quota);
+		void   _attach(addr_t phys_addr, addr_t vm_addr, size_t size);
 
 	public:
 
@@ -69,6 +70,7 @@ class Genode::Vm_session_component :
 		void run(void);
 		void pause(void);
 		void attach(Dataspace_capability ds_cap, addr_t vm_addr);
+		void attach_pic(addr_t vm_addr);
 		void detach(addr_t vm_addr, size_t size);
 };
 

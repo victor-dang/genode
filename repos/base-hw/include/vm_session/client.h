@@ -50,6 +50,9 @@ namespace Genode
 
 		void detach(addr_t vm_addr, size_t size) {
 			call<Rpc_detach>(vm_addr, size); }
+
+		void attach_pic(addr_t vm_addr) {
+			call<Rpc_attach_pic>(vm_addr); }
 	};
 }
 

@@ -72,18 +72,13 @@ void Vm_session_component::pause(void)
 }
 
 
-void Vm_session_component::attach(Dataspace_capability ds_cap, addr_t vm_addr)
+void Vm_session_component::_attach(addr_t phys_addr, addr_t vm_addr, size_t size)
 {
-	/* check dataspace validity */
-	Object_pool<Dataspace_component>::Guard dsc(_ds_ep->lookup_and_lock(ds_cap));
-	if (!dsc) throw Invalid_dataspace();
-
-	Page_flags pflags = Page_flags::apply_mapping(true, CACHED, false);
+		Page_flags pflags = Page_flags::apply_mapping(true, CACHED, false);
 	try {
 		for (unsigned i = 0; i < 2; i++) {
 			try {
-				_table->insert_translation(vm_addr, dsc->phys_addr(),
-				                           dsc->size(), pflags, _pslab);
+				_table->insert_translation(vm_addr, phys_addr, size, pflags, _pslab);
 				return;
 			} catch(Page_slab::Out_of_slabs) {
 				_pslab->alloc_slab_block();
@@ -92,10 +87,24 @@ void Vm_session_component::attach(Dataspace_capability ds_cap, addr_t vm_addr)
 	} catch(Allocator::Out_of_memory) {
 		PERR("Translation table needs to much RAM");
 	} catch(...) {
-		PERR("Invalid mapping %p -> %p (%zx)", (void*)dsc->phys_addr(),
-		     (void*)vm_addr, dsc->size());
+		PERR("Invalid mapping %p -> %p (%zx)", (void*)phys_addr,
+		     (void*)vm_addr, size);
 	}
 }
+
+
+void Vm_session_component::attach(Dataspace_capability ds_cap, addr_t vm_addr)
+{
+	/* check dataspace validity */
+	Object_pool<Dataspace_component>::Guard dsc(_ds_ep->lookup_and_lock(ds_cap));
+	if (!dsc) throw Invalid_dataspace();
+
+	_attach(dsc->phys_addr(), vm_addr, dsc->size());
+}
+
+
+void Vm_session_component::attach_pic(addr_t vm_addr) {
+	_attach(Board::GIC_VIRT_CPU_MMIO_BASE, vm_addr, 0x1000); }
 
 
 void Vm_session_component::detach(addr_t vm_addr, size_t size) {
@@ -130,6 +139,8 @@ Vm_session_component::~Vm_session_component()
 {
 	/* dissolve VM dataspace from service entry point */
 	_ds_ep->dissolve(&_ds);
+
+	Kernel::bin_vm(_vm_id);
 
 	/* free region in allocator */
 	core_env()->rm_session()->detach(_ds.core_local_addr());

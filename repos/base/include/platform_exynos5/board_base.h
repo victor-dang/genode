@@ -50,6 +50,9 @@ class Genode::Exynos5
 
 			/* CPU cache */
 			CACHE_LINE_SIZE_LOG2 = 6,
+
+			VIRTUAL_MAINTAINANCE_IRQ = 25,
+			VIRTUAL_TIMER_IRQ        = 27,
 		};
 };
 

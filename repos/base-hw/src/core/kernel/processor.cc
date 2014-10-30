@@ -19,7 +19,9 @@
 #include <kernel/irq.h>
 #include <pic.h>
 #include <timer.h>
+#include <board.h>
 #include <kernel/thread.h>
+#include <kernel/vm.h>
 #include <platform_console.h>
 
 
@@ -90,9 +92,15 @@ void Kernel::Processor_client::_interrupt(unsigned const processor_id)
 					Kernel::Thread *thread = dynamic_cast<Kernel::Thread*>(this);
 					if (thread && (Genode::platform_console()->get_char() == ESC_KEY))
 						thread->print_activity_table();
-		/* after all it must be a user interrupt */
 
-		} else {
+			} else if ((irq_id == Genode::Board::VIRTUAL_TIMER_IRQ) ||
+			           (irq_id == Genode::Board::VIRTUAL_MAINTAINANCE_IRQ)) {
+
+					Kernel::Vm *vm = dynamic_cast<Kernel::Vm*>(this);
+					assert(vm);
+					vm->inject_irq(irq_id);
+
+			} else { /* after all it must be a user interrupt */
 				/* try to inform the user interrupt-handler */
 				Irq::occurred(irq_id);
 			}

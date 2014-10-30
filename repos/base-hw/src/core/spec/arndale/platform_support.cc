@@ -74,6 +74,11 @@ void Genode::Board::prepare_kernel()
 {
 	using Cpsr = Cpu::Psr;
 
+	/* ARM generic timer counter freq needs to be set in secure mode */
+	volatile unsigned long * mct_control  = (unsigned long*) 0x101C0240;
+	*mct_control  = 0x100;
+	asm volatile ("mcr p15, 0, %0, c14, c0, 0" :: "r" (24000000));
+
 	/* if not in HYP mode, get into it */
 	if (Cpsr::M::get(Cpsr::read()) != 0b11010)
 	{
@@ -129,7 +134,7 @@ void Genode::Board::prepare_kernel()
 //	asm volatile("MCR p15, 0, %0, c12, c0, 0" :: "r" (0x8029e660));
 
 	/* HCPTR */
-	asm volatile("MCR p15, 4, %0, c1, c1, 2" :: "r" (0x4010bfff));
+	asm volatile("MCR p15, 4, %0, c1, c1, 2" :: "r" (0x4010b3ff));
 
 	/* set VTCR */
 	asm volatile ("mcr p15, 4, %[v], c2, c1, 2"

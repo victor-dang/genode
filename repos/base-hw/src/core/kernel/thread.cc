@@ -844,6 +844,20 @@ void Thread::_call_new_vm()
 }
 
 
+void Thread::_call_bin_vm()
+{
+	/* lookup virtual machine */
+	Vm * const vm = Vm::pool()->object(user_arg_1());
+	if (!vm) {
+		PWRN("failed to lookup virtual machine");
+		return;
+	}
+
+	/* destroy vm */
+	vm->~Vm();
+}
+
+
 void Thread::_call_run_vm()
 {
 	/* lookup virtual machine */
@@ -937,6 +951,7 @@ void Thread::_call()
 	case call_id_bin_signal_context():  _call_bin_signal_context(); return;
 	case call_id_bin_signal_receiver(): _call_bin_signal_receiver(); return;
 	case call_id_new_vm():              _call_new_vm(); return;
+	case call_id_bin_vm():              _call_bin_vm(); return;
 	case call_id_run_vm():              _call_run_vm(); return;
 	case call_id_pause_vm():            _call_pause_vm(); return;
 	case call_id_pause_thread():        _call_pause_thread(); return;
