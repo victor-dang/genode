@@ -15,6 +15,7 @@
 #include <base/exception.h>
 #include <os/attached_rom_dataspace.h>
 #include <os/attached_ram_dataspace.h>
+#include <os/attached_mmio.h>
 #include <vm_session/connection.h>
 #include <timer_session/connection.h>
 #include <io_mem_session/connection.h>
@@ -277,6 +278,9 @@ class Vm {
 		void pause()              { _vm_con.pause();            }
 		void wait_for_interrupt() { _active = false;            }
 		void interrupt()          { _active = true;             }
+
+		void attach(Genode::Dataspace_capability cap, Genode::addr_t addr) {
+			_vm_con.attach(cap, addr); }
 
 		void dump()
 		{
@@ -751,6 +755,7 @@ class Vmm
 								_irqs[irq].distr_state == Irq::ENABLED)
 								_vm->state()->timer_irq = true;
 							_irqs[irq].cpu_state = Irq::INACTIVE;
+							_irqs[irq].device->irq_handled(irq);
 						}
 					}
 
@@ -953,6 +958,62 @@ class Vmm
 						throw Error("Unknown IRQ %u occured",
 						            _vm->state()->gic_irq);
 					};
+				}
+		};
+
+
+		enum { THREAD_STACK_SIZE = sizeof(Genode::addr_t)*2048 };
+
+		class Dedicated_device : public Genode::Thread<THREAD_STACK_SIZE>,
+		                         public Device
+		{
+			private:
+
+				Genode::Io_mem_connection                   _iomem;
+				Genode::Irq_connection                      _irq;
+				unsigned                                    _virq;
+				Genode::Signal_dispatcher<Dedicated_device> _handler;
+				Gic                                        &_gic;
+				Genode::Semaphore                           _sem;
+
+				void _handle_irq(unsigned) { _gic.inject_irq(_virq); }
+
+			public:
+
+				Dedicated_device(const char * const       name,
+				                 const Genode::uint64_t   addr,
+				                 const Genode::uint64_t   size,
+				                 Vm                      *vm,
+				                 Genode::Signal_receiver &receiver,
+				                 Gic                     &gic,
+				                 const Genode::addr_t     io_addr,
+				                 const Genode::size_t     io_size,
+				                 const unsigned           irq,
+				                 const unsigned           virq)
+				: Genode::Thread<THREAD_STACK_SIZE>(name),
+				  Device(name, addr, size, vm),
+				  _iomem(io_addr, io_size),
+				  _irq(irq), _virq(virq),
+				  _handler(receiver, *this, &Dedicated_device::_handle_irq),
+				  _gic(gic)
+				{
+					_gic.register_irq(virq, this, true);
+					vm->attach(_iomem.dataspace(), addr);
+					start();
+				}
+
+				void irq_handled (unsigned) { _sem.up(); }
+
+				void entry()
+				{
+					Genode::Signal_transmitter transmitter(_handler);
+
+					while (true) {
+						_irq.wait_for_irq();
+						PINF("DMA IRQ");
+						transmitter.submit();
+						_sem.down();
+					}
 				}
 		};
 
@@ -1317,6 +1378,7 @@ class Vmm
 		Generic_timer                  _timer;
 		System_register                _sys_regs;
 		Pl011                          _uart;
+		Dedicated_device               _dma_engine;
 
 		void _handle_hyper_call() {
 			throw Vm::Exception("Unknown hyper call!"); }
@@ -1387,10 +1449,12 @@ class Vmm
 		: _vm_handler(_sig_rcv, *this, &Vmm::_handle_vm),
 		  _vm("linux", "dtb", 1024 * 1024 * 128, _vm_handler),
 		  _cp15(_vm.state()),
-		  _gic      ("Gic",             0x2c001000, 0x2000, &_vm),
-		  _timer    ("Timer",           0x2a430000, 0x1000, &_vm, _sig_rcv, _gic),
-		  _sys_regs ("System Register", 0x1c010000, 0x1000, &_vm),
-		  _uart     ("Pl011",           0x1c090000, 0x1000, &_vm, _sig_rcv, _gic) { }
+		  _gic       ("Gic",             0x2c001000, 0x2000, &_vm),
+		  _timer     ("Timer",           0x2a430000, 0x1000, &_vm, _sig_rcv, _gic),
+		  _sys_regs  ("System Register", 0x1c010000, 0x1000, &_vm),
+		  _uart      ("Pl011",           0x1c090000, 0x1000, &_vm, _sig_rcv, _gic),
+		  _dma_engine("Pl330",           0x70010000, 0x1000, &_vm, _sig_rcv, _gic,
+		              0x10800000, 0x1000, 65, 120) { }
 
 		void run()
 		{
@@ -1399,6 +1463,7 @@ class Vmm
 			_device_tree.insert(&_gic);
 			_device_tree.insert(&_sys_regs);
 			_device_tree.insert(&_uart);
+			_device_tree.insert(&_dma_engine);
 			_vm.start();
 
 			while (true) {
