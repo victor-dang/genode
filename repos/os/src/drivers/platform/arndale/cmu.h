@@ -440,19 +440,19 @@ class Cmu : public Regulator::Driver,
 			/**
 			 * Close certain clock gates by default (~ 0.7 Watt reduction)
 			 */
-			write<Clk_gate_ip_acp>(0);
-			write<Clk_gate_ip_isp0>(0);
-			write<Clk_gate_ip_isp1>(0);
-			write<Clk_gate_sclk_isp>(0);
-			write<Clk_gate_ip_gscl>(0);
-			write<Clk_gate_ip_disp1>(0);
-			write<Clk_gate_ip_mfc>(0);
-			write<Clk_gate_ip_g3d>(0);
-			write<Clk_gate_ip_gen>(0);
-			write<Clk_gate_ip_fsys>(0);
-			write<Clk_gate_ip_peric>(Clk_gate_ip_peric::Clk_uart2::bits(1) |
-			                         Clk_gate_ip_peric::Clk_pwm::bits(1));
-			write<Clk_gate_block>(Clk_gate_block::Clk_gen::bits(1));
+//			write<Clk_gate_ip_acp>(0);
+//			write<Clk_gate_ip_isp0>(0);
+//			write<Clk_gate_ip_isp1>(0);
+//			write<Clk_gate_sclk_isp>(0);
+//			write<Clk_gate_ip_gscl>(0);
+//			write<Clk_gate_ip_disp1>(0);
+//			write<Clk_gate_ip_mfc>(0);
+//			write<Clk_gate_ip_g3d>(0);
+//			write<Clk_gate_ip_gen>(0);
+//			write<Clk_gate_ip_fsys>(0);
+//			write<Clk_gate_ip_peric>(Clk_gate_ip_peric::Clk_uart2::bits(1) |
+//			                         Clk_gate_ip_peric::Clk_pwm::bits(1));
+//			write<Clk_gate_block>(Clk_gate_block::Clk_gen::bits(1));
 
 
 			/**

@@ -161,26 +161,26 @@ class Pmu : public Regulator::Driver,
 		Pmu() : Genode::Attached_mmio(Genode::Board_base::PMU_MMIO_BASE,
 		                              Genode::Board_base::PMU_MMIO_SIZE)
 		{
-			write<Hdmi_phy_control   ::Enable>(0);
-			write<Usbdrd_phy_control ::Enable>(0);
-			write<Usbhost_phy_control::Enable>(0);
-			write<Efnand_phy_control ::Enable>(0);
-			write<Adc_phy_control    ::Enable>(0);
-			write<Mtcadc_phy_control ::Enable>(0);
-			write<Dptx_phy_control   ::Enable>(0);
-			write<Sata_phy_control   ::Enable>(0);
-
-			_disable_domain<Gscl_configuration,  Gscl_status>();
-			_disable_domain<Isp_configuration,   Isp_status>();
-			_disable_domain<Mfc_configuration,   Mfc_status>();
-			_disable_domain<G3d_configuration,   G3d_status>();
-			_disable_domain<Disp1_configuration, Disp1_status>();
-			_disable_domain<Mau_configuration,   Mau_status>();
-
-			_disable_domain<Vpll_sysclk_configuration, Vpll_sysclk_status>();
-			_disable_domain<Epll_sysclk_configuration, Epll_sysclk_status>();
-			_disable_domain<Cpll_sysclk_configuration, Cpll_sysclk_status>();
-			_disable_domain<Gpll_sysclk_configuration, Gpll_sysclk_status>();
+			//write<Hdmi_phy_control   ::Enable>(0);
+			//write<Usbdrd_phy_control ::Enable>(0);
+			//write<Usbhost_phy_control::Enable>(0);
+			//write<Efnand_phy_control ::Enable>(0);
+			//write<Adc_phy_control    ::Enable>(0);
+			//write<Mtcadc_phy_control ::Enable>(0);
+			//write<Dptx_phy_control   ::Enable>(0);
+			//write<Sata_phy_control   ::Enable>(0);
+			//
+			//_disable_domain<Gscl_configuration,  Gscl_status>();
+			//_disable_domain<Isp_configuration,   Isp_status>();
+			//_disable_domain<Mfc_configuration,   Mfc_status>();
+			//_disable_domain<G3d_configuration,   G3d_status>();
+			//_disable_domain<Disp1_configuration, Disp1_status>();
+			//_disable_domain<Mau_configuration,   Mau_status>();
+			//
+			//_disable_domain<Vpll_sysclk_configuration, Vpll_sysclk_status>();
+			//_disable_domain<Epll_sysclk_configuration, Epll_sysclk_status>();
+			//_disable_domain<Cpll_sysclk_configuration, Cpll_sysclk_status>();
+			//_disable_domain<Gpll_sysclk_configuration, Gpll_sysclk_status>();
 		}
 
 
