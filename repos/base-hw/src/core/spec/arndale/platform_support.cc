@@ -22,6 +22,7 @@
 #include <platform_pd.h>
 #include <unmanaged_singleton.h>
 #include <long_translation_table.h>
+#include <util/mmio.h>
 
 using namespace Genode;
 
@@ -53,12 +54,24 @@ Native_region * Platform::_core_only_mmio_regions(unsigned const i)
 		{ Board::GIC_CPU_MMIO_BASE, Board::GIC_CPU_MMIO_SIZE },
 		{ Board::MCT_MMIO_BASE, Board::MCT_MMIO_SIZE },
 		{ Board::UART_2_MMIO_BASE, 0x1000 },
+		{ 0x10440000, 0x1000 }, /* IRQ Combiner */
 	};
 	return i < sizeof(_regions)/sizeof(_regions[0]) ? &_regions[i] : 0;
 }
 
 
 Cpu::User_context::User_context() { cpsr = Psr::init_user(); }
+
+
+struct Irq_combiner : Genode::Mmio
+{
+		struct Iesr1 : Register<0x10, 32> { };
+
+		Irq_combiner() : Mmio(0x10440000)
+		{
+			write<Iesr1>(1 << 24 | 1 << 25); /* enable SYSMMU MDMA0 */
+		}
+};
 
 
 /* hypervisor exception vector address */
@@ -72,6 +85,8 @@ Genode::addr_t Genode::Board::vm_entry() {
 
 void Genode::Board::prepare_kernel()
 {
+	static Irq_combiner combiner;
+
 	using Cpsr = Cpu::Psr;
 
 	/* ARM generic timer counter freq needs to be set in secure mode */
