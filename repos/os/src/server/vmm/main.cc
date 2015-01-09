@@ -13,6 +13,7 @@
 
 /* Genode includes */
 #include <base/exception.h>
+#include <base/printf.h>
 #include <os/attached_rom_dataspace.h>
 #include <os/attached_ram_dataspace.h>
 #include <os/attached_mmio.h>
@@ -145,32 +146,26 @@ struct Vm_state : Genode::Cpu_state_modes
 };
 
 
-class Ram {
+class Ram : public Genode::Attached_ram_dataspace {
 
 	private:
 
-		Genode::addr_t const _base;
-		Genode::size_t const _size;
-		Genode::addr_t const _local;
+		Genode::addr_t const           _guest_physical;
+		Genode::addr_t const           _host_physical;
+		Genode::size_t const           _size;
 
 	public:
 
-		class Invalid_addr : Genode::Exception {};
+		Ram(Genode::addr_t const addr, Genode::size_t const sz)
+		: Genode::Attached_ram_dataspace(Genode::env()->ram_session(),
+		                                 sz, Genode::UNCACHED),
+		  _guest_physical(addr),
+		  _host_physical(Genode::Dataspace_client(cap()).phys_addr()),
+		  _size(sz) { }
 
-		Ram(Genode::addr_t const addr, Genode::size_t const sz,
-		    Genode::addr_t const local)
-		: _base(addr), _size(sz), _local(local) { }
-
-		Genode::addr_t base()  const { return _base;  }
-		Genode::size_t size()  const { return _size;  }
-		Genode::addr_t local() const { return _local; }
-
-		Genode::addr_t va(Genode::addr_t phys)
-		{
-			if ((phys < _base) || (phys > (_base + _size)))
-				throw Invalid_addr();
-			return _local + (phys - _base);
-		}
+		Genode::addr_t guest_physical() const { return _guest_physical; }
+		Genode::addr_t host_physical()  const { return _host_physical;  }
+		Genode::size_t size()           const { return _size;  }
 };
 
 
@@ -188,25 +183,24 @@ class Vm {
 		Genode::Vm_connection          _vm_con;
 		Genode::Attached_rom_dataspace _kernel_rom;
 		Genode::Attached_rom_dataspace _dtb_rom;
-		Genode::Attached_ram_dataspace _vm_ram;
 		Ram                            _ram;
 		Vm_state                      *_state;
 		bool                           _active = true;
 
 		void _load_kernel()
 		{
-			Genode::memcpy((void*)(_ram.local() + KERNEL_OFFSET),
+			Genode::memcpy((void*)((Genode::addr_t)_ram.local_addr<void>() + KERNEL_OFFSET),
 			               _kernel_rom.local_addr<void>(),
 			               _kernel_rom.size());
-			_state->ip = _ram.base() + KERNEL_OFFSET;
+			_state->ip = _ram.guest_physical() + KERNEL_OFFSET;
 		}
 
 		void _load_dtb()
 		{
-			Genode::memcpy((void*)(_ram.local() + DTB_OFFSET),
+			Genode::memcpy((void*)((Genode::addr_t)_ram.local_addr<void>() + DTB_OFFSET),
 			               _dtb_rom.local_addr<void>(),
 			               _dtb_rom.size());
-			_state->r2 = _ram.base() + DTB_OFFSET;
+			_state->r2 = _ram.guest_physical() + DTB_OFFSET;
 		}
 
 	public:
@@ -241,13 +235,12 @@ class Vm {
 		   Genode::Signal_context_capability sig_cap)
 		: _kernel_rom(kernel),
 		  _dtb_rom(dtb),
-		  _vm_ram(Genode::env()->ram_session(), ram_size, Genode::UNCACHED),
-		  _ram(RAM_ADDRESS, ram_size, (Genode::addr_t)_vm_ram.local_addr<void>()),
+		  _ram(RAM_ADDRESS, ram_size),
 		  _state((Vm_state*)Genode::env()->rm_session()->attach(_vm_con.cpu_state()))
 		{
-			PINF("ram is at %lx", Genode::Dataspace_client(_vm_ram.cap()).phys_addr());
+			PINF("ram is at %lx", _ram.host_physical());
 			_vm_con.exception_handler(sig_cap);
-			_vm_con.attach(_vm_ram.cap(), RAM_ADDRESS);
+			_vm_con.attach(_ram.cap(), RAM_ADDRESS);
 			_vm_con.attach_pic(0x2C002000);
 		}
 
@@ -365,7 +358,8 @@ class Vm {
 			return 0;
 		}
 
-		Vm_state *state() const { return  _state; }
+		Vm_state * state() const { return  _state; }
+		Ram      * ram()         { return &_ram;   }
 };
 
 
@@ -1018,6 +1012,224 @@ class Vmm
 		};
 
 
+		class Dedicated_dma_device : public Dedicated_device
+		{
+			private:
+
+				class Sys_mmu : public Genode::Attached_mmio,
+				                public Genode::Irq_connection,
+				                public Genode::Thread<8192>
+				{
+					private:
+
+						struct Control : Register<0x0, 32>
+						{
+							struct Enable     : Bitfield<0, 1> {};
+							struct Block      : Bitfield<1, 1> {};
+							struct Irq_enable : Bitfield<2, 1> {};
+						};
+
+						struct Status     : Register<0x8, 32>  { };
+						struct Pt_base    : Register<0x14, 32> { };
+						struct Irq_status : Register<0x18, 32> { };
+						struct Irq_mask   : Register<0x20, 32> { };
+
+						Genode::Ram_dataspace_capability _t_ds;
+
+						class Translation_table
+						{
+							public:
+
+								enum {
+									SIZE_LOG2 = 14,
+									SIZE      = 1 << SIZE_LOG2,
+								};
+
+								/**
+								 * A first level translation descriptor
+								 */
+								struct Descriptor : Genode::Register<32>
+								{
+									enum Type { FAULT, PAGE_TABLE, SECTION };
+
+									enum {
+										VIRT_SIZE_LOG2 = 20,
+										VIRT_SIZE      = 1 << VIRT_SIZE_LOG2,
+									};
+
+									struct Type_0   : Bitfield<0, 2> { };
+									struct Type_1_0 : Bitfield<1, 1> { };
+									struct Type_1_1 : Bitfield<18, 1> { };
+									struct Type_1   : Genode::Bitset_2<Type_1_0, Type_1_1> { };
+
+									/**
+									 * Get descriptor type of 'v'
+									 */
+									static Type type(access_t const v)
+									{
+										switch (Type_0::get(v)) {
+										case 0: return FAULT;
+										case 1: return PAGE_TABLE; }
+
+										if (Type_1::get(v) == 1) { return SECTION; }
+										return FAULT;
+									}
+
+									/**
+									 * Set descriptor type of 'v'
+									 */
+									static void type(access_t & v, Type const t)
+									{
+										switch (t) {
+										case FAULT:      Type_0::set(v, 0); return;
+										case PAGE_TABLE: Type_0::set(v, 1); return;
+										case SECTION:    Type_1::set(v, 1); return; }
+									}
+
+									static bool valid(access_t & v) { return type(v) != FAULT; }
+								};
+
+								/**
+								 * Section translation descriptor
+								 */
+								struct Section : Descriptor
+								{
+									struct Ap_0 : Bitfield<10, 2> { };  /* access permission */
+									struct Ap_1 : Bitfield<15, 1> { };  /* access permission */
+									struct Pa   : Bitfield<20, 12> { }; /* physical base     */
+									struct Ap   : Genode::Bitset_2<Ap_0, Ap_1> { };
+
+									/**
+									 * Return section descriptor for physical address 'pa'
+									 */
+									static access_t create(Genode::addr_t const pa)
+									{
+										access_t v = Pa::masked(pa);
+										Ap::set(v, 3);
+										Descriptor::type(v, Descriptor::SECTION);
+										return v;
+									}
+								};
+
+							protected:
+
+								Descriptor::access_t _entries[SIZE/sizeof(Descriptor::access_t)];
+
+							public:
+
+								static bool aligned(Genode::addr_t vo, Genode::size_t log2) {
+									return !(vo & ((1 << log2) - 1)); }
+
+								void * operator new (Genode::size_t, void * p) { return p; }
+
+								Translation_table()
+								{
+									PDBG("%p", this);
+
+									if (!aligned((Genode::addr_t)this, SIZE_LOG2))
+										throw Vm::Exception("Translation_table not aligned correctly!");
+
+									Genode::memset(&_entries, 0, sizeof(_entries));
+								}
+
+								void insert_translation(Genode::addr_t vo, Genode::addr_t pa,
+								                        Genode::size_t size)
+								{
+									/* check sanity */
+									if(!aligned(vo, Section::Descriptor::VIRT_SIZE_LOG2)   ||
+									   !aligned(size, Section::Descriptor::VIRT_SIZE_LOG2))
+										throw Vm::Exception("Inserted region misaligned!");
+
+									for (unsigned i = vo >> Descriptor::VIRT_SIZE_LOG2;
+										 size > 0;
+										 vo   += Descriptor::VIRT_SIZE,
+										 pa   += Descriptor::VIRT_SIZE,
+										 size -= Descriptor::VIRT_SIZE,
+										 i     = vo >> Descriptor::VIRT_SIZE_LOG2) {
+
+										if(Descriptor::valid(_entries[i]))
+											throw Vm::Exception("Conflicting entry at %lx", vo);
+
+										_entries[i] = Section::create(pa);
+
+										/* check whether we wrap */
+										if ((vo + Descriptor::VIRT_SIZE) < vo) return;
+									}
+								}
+						} *_t_table;
+
+						void * _find_region()
+						{
+							for (Genode::Rm_session::Local_addr addr = Translation_table::SIZE; ;
+								 addr = (Genode::addr_t)addr + Translation_table::SIZE) {
+								try {
+									return Genode::env()->rm_session()->attach_at(_t_ds, addr);
+								} catch (Genode::Rm_session::Attach_failed) {}
+							}
+						}
+
+					public:
+
+						Sys_mmu(Genode::addr_t base, unsigned irq)
+						: Genode::Attached_mmio(base, 0x1000),
+						  Genode::Irq_connection(irq),
+						  Genode::Thread<8192>("sysmmu"),
+						  _t_ds(Genode::env()->ram_session()->alloc(Translation_table::SIZE,
+						                                            Genode::UNCACHED)),
+						  _t_table(new (_find_region()) Translation_table())
+						{
+							Control::access_t v = 0;
+							Control::Enable::set(v, 1);
+							Control::Irq_enable::set(v, 1);
+							write<Control>(v);
+							write<Pt_base>(Genode::Dataspace_client(_t_ds).phys_addr());
+
+							PINF("PTBASE %x", read<Pt_base>());
+							PINF("STATUS %x", read<Status>());
+
+							start();
+						}
+
+						void insert_translation(Genode::addr_t vo,
+						                        Genode::addr_t pa,
+						                        Genode::size_t sz) {
+							_t_table->insert_translation(vo, pa, sz); }
+
+						void entry()
+						{
+							while (true) {
+								wait_for_irq();
+								PINF("SYS_MMU IRQ %x", read<Irq_status>());
+								return;
+							}
+						}
+				} _sys_mmu;
+
+			public:
+
+				Dedicated_dma_device(const char * const       name,
+				                     const Genode::uint64_t   addr,
+				                     const Genode::uint64_t   size,
+				                     Vm                      *vm,
+				                     Genode::Signal_receiver &receiver,
+				                     Gic                     &gic,
+				                     const Genode::addr_t     io_addr,
+				                     const Genode::size_t     io_size,
+				                     const unsigned           irq,
+				                     const unsigned           virq,
+				                     const Genode::addr_t     sys_mmu_addr,
+				                     const unsigned           sys_mmu_irq)
+				: Dedicated_device(name, addr, size, vm, receiver, gic,
+				                   io_addr, io_size, irq, virq),
+					_sys_mmu(sys_mmu_addr, sys_mmu_irq)
+				{
+					_sys_mmu.insert_translation(vm->ram()->guest_physical(),
+					                            vm->ram()->host_physical(),
+					                            vm->ram()->size());
+				}
+		};
+
+
 		class Generic_timer : public Device
 		{
 			private:
@@ -1378,7 +1590,7 @@ class Vmm
 		Generic_timer                  _timer;
 		System_register                _sys_regs;
 		Pl011                          _uart;
-		Dedicated_device               _dma_engine;
+		Dedicated_dma_device           _dma_engine;
 
 		void _handle_hyper_call() {
 			throw Vm::Exception("Unknown hyper call!"); }
@@ -1422,7 +1634,7 @@ class Vmm
 				return;
 			default:
 				throw Vm::Exception("Unknown trap: %x",
-				                    Hsr::Ec::get(_vm.state()->hsr));
+				                Hsr::Ec::get(_vm.state()->hsr));
 			};
 		}
 
@@ -1454,7 +1666,7 @@ class Vmm
 		  _sys_regs  ("System Register", 0x1c010000, 0x1000, &_vm),
 		  _uart      ("Pl011",           0x1c090000, 0x1000, &_vm, _sig_rcv, _gic),
 		  _dma_engine("Pl330",           0x70010000, 0x1000, &_vm, _sig_rcv, _gic,
-		              0x10800000, 0x1000, 65, 120) { }
+		              0x10800000, 0x1000, 65, 120, 0x10a40000, 39) { }
 
 		void run()
 		{
@@ -1478,14 +1690,17 @@ class Vmm
 
 int main()
 {
-	static Vmm vmm;
+	Vmm * vmm_ptr = nullptr;
 
 	try {
+		static Vmm vmm;
+		vmm_ptr = &vmm;
 		PINF("Start virtual machine ...");
 		vmm.run();
 	} catch(Vm::Exception &e) {
 		e.print();
-		vmm.dump();
+		if (vmm_ptr)
+			vmm_ptr->dump();
 		return -1;
 	}
 	return 0;
