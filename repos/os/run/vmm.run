@@ -1,7 +1,7 @@
 #
 # \brief  Virtual-machine monitor demo
 # \author Stefan Kalkowski
-# \date   2015-06-25
+# \date   2012-06-25
 #
 
 assert_spec hw_arndale
@@ -10,14 +10,26 @@ set build_components {
 	core init
 	drivers/timer
 	drivers/platform
-	drivers/uart
+	drivers/usb
+	drivers/framebuffer
+	server/nitpicker
+	server/report_rom
+	server/wm
+	server/nit_fb
+	server/terminal
 	server/vmm
+	app/pointer
+	app/status_bar
+	app/decorator
+	app/floating_window_layouter
+	app/backdrop
+	app/cli_monitor
 }
 build $build_components
 create_boot_directory
 
 install_config {
-<config verbose="yes">
+<config verbose="yes" prio_levels="2">
 	<parent-provides>
 		<service name="ROM"/>
 		<service name="RAM"/>
@@ -43,70 +55,188 @@ install_config {
 		<resource name="RAM" quantum="1M"/>
 		<provides><service name="Timer"/></provides>
 	</start>
-	<start name="uart_drv">
+	<start name="fb_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>
+	<start name="usb_drv">
+		<resource name="RAM" quantum="12M"/>
+		<provides><service name="Input"/></provides>
+		<config ehci="yes" uhci="yes" xhci="no"> <hid/> </config>
+	</start>
+	<start name="nitpicker">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Nitpicker"/></provides>
+		<config>
+			<domain name="pointer"   layer="1" xray="no" origin="pointer" />
+			<domain name="decorator" layer="2" xray="opaque" />
+			<domain name="default"   layer="2" />
+
+			<policy label="pointer"         domain="pointer"/>
+			<policy label=""                domain="default"/>
+			<policy label="wm -> decorator" domain="decorator"/>
+
+			<global-key name="KEY_SCROLLLOCK" operation="xray" />
+			<global-key name="KEY_SYSRQ"      operation="kill" />
+			<global-key name="KEY_PRINT"      operation="kill" />
+			<global-key name="KEY_F11"        operation="kill" />
+			<global-key name="KEY_F12"        operation="xray" />
+		</config>
+		<route>
+			<service name="Input">       <child name="usb_drv"/> </service>
+			<service name="Framebuffer"> <child name="fb_drv"/> </service>
+			<any-service> <parent/> <any-child/> </any-service>
+		</route>
+	</start>
+	<start name="pointer">
+		<resource name="RAM" quantum="1M"/>
+		<route>
+			<service name="Nitpicker"> <child name="nitpicker"/> </service>
+			<any-service> <parent/> <any-child/> </any-service>
+		</route>
+	</start>
+	<start name="wm" priority="-1">
+		<resource name="RAM" quantum="64M"/>
+		<provides><service name="Nitpicker"/></provides>
+		<route>
+			<any-service>
+				<child name="nitpicker"/> <parent/> <any-child/>
+			</any-service>
+		</route>
+	</start>
+	<start name="backdrop" priority="-1">
+		<resource name="RAM" quantum="4M"/>
+		<config>
+			<libc>
+				<vfs>
+					<rom name="genode_logo.png"/>
+					<rom name="grid.png"/>
+				</vfs>
+			</libc>
+			<fill color="#224433" />
+			<image png="grid.png"        tiled="yes" alpha="200" />
+			<image png="genode_logo.png" anchor="bottom_right" alpha="150"
+			                             xpos="-20" ypos="-20" />
+		</config>
+		<route>
+			<any-service> <child name="nitpicker"/> <parent/> <any-child/>
+			</any-service>
+		</route>
+	</start>
+	<start name="shell">
+		<binary name="nit_fb"/>
 		<resource name="RAM" quantum="2M"/>
 		<provides>
-			<service name="Terminal"/>
-			<service name="Uart"/>
+			<service name="Framebuffer"/>
+			<service name="Input"/>
 		</provides>
-		<config>
-			<policy label="vmm" uart="1"/>
-		</config>
+		<config xpos="100" ypos="100" width="640" height="280"/>
+		<route>
+			<any-service> <child name="wm"/> <parent/> <any-child/>
+			</any-service>
+		</route>
 	</start>
-	<start name="vmm">
-		<resource name="RAM" quantum="256M"/>
+	<start name="terminal">
+		<resource name="RAM" quantum="2M"/>
+		<provides><service name="Terminal"/></provides>
+		<config>
+			<!-- supported built-in font sizes are 8, 12, and 16 -->
+			<font size="12" />
+		</config>
+		<route>
+			<any-service> <child name="shell"/> <parent/> <any-child/> </any-service>
+		</route>
+		</start>
+	<start name="cli_monitor">
+		<resource name="RAM" quantum="1500M"/>
+		<config>
+			<subsystem name="vmm" help="Virtual machine monitor running Linux">
+				<resource name="RAM" quantum="256M" />
+				<binary name="init" />
+				<config>
+					<parent-provides>
+					<service name="ROM"/>
+					<service name="RAM"/>
+					<service name="IRQ"/>
+					<service name="IO_MEM"/>
+					<service name="CAP"/>
+					<service name="PD"/>
+					<service name="RM"/>
+					<service name="CPU"/>
+					<service name="LOG"/>
+					<service name="SIGNAL"/>
+					<service name="VM"/>
+					<service name="Nitpicker"/>
+					<service name="Framebuffer"/>
+					<service name="Input"/>
+					<service name="Timer"/>
+					</parent-provides>
+					<default-route>
+						<any-service><parent/><any-child/></any-service>
+					</default-route>
+					<start name="linux">
+						<binary name="nit_fb"/>
+						<resource name="RAM" quantum="2M"/>
+						<provides>
+							<service name="Framebuffer"/>
+							<service name="Input"/>
+						</provides>
+						<config xpos="800" ypos="100" width="640" height="380"/>
+					</start>
+					<start name="terminal">
+						<resource name="RAM" quantum="2M"/>
+						<provides><service name="Terminal"/></provides>
+						<config>
+							<!-- supported built-in font sizes are 8, 12, and 16 -->
+							<font size="12" />
+						</config>
+						<route>
+							<any-service> <child name="linux"/> <parent/> <any-child/> </any-service>
+						</route>
+					</start>
+					<start name="vmm">
+						<resource name="RAM" quantum="256M"/>
+					</start>
+				</config>
+			</subsystem>
+		</config>
+		<route>
+			<any-service> <child name="terminal" /> <child name="wm" /><any-child/> <parent/> </any-service>
+		</route>
 	</start>
 </config>
 }
 
-
-#
-# This test uses a Linux kernel built from unmodified vanilla kernel sources
-# but using a slightly simplified kernel configuration, as well as device tree
-# for a minimal Versatile Express Cortex A15 like emulated board.
-#
-# The used sources, including the modified device tree and configuration file
-# can be found in the following git repository/branch:
-#
-#   https://github.com/skalk/linux/tree/vexpress-vt
-#
-# To compile the kernel and device tree blob used in this script, do the
-# following steps:
-#
-# ! git checkout https://github.com/skalk/linux.git
-# ! cd linux
-# ! git checkout origin/vexpress-vt
-# ! make ARCH=arm CROSS_COMPILE=<cross_compiler_prefix> vexpress_config
-# ! make ARCH=arm CROSS_COMPILE=<cross_compiler_prefix> -j8 Image
-# ! make ARCH=arm CROSS_COMPILE=<cross_compiler_prefix> vexpress-v2p-ca15-tc1.dtb
-#
-
-if {![file exists bin/linux]} {
-	puts "Download linux kernel ..."
-	exec >& /dev/null wget -c -O bin/linux http://genode.org/files/release-15.02/arm_vt/linux
-}
-
-if {![file exists bin/dtb]} {
-	puts "Download device tree blob ..."
-	exec >& /dev/null wget -c -O bin/dtb http://genode.org/files/release-15.02/arm_vt/dtb
-}
+# copy backdrop PNG images to bin directory
+foreach file { genode_logo.png grid.png } {
+	file copy -force [genode_dir]/repos/gems/src/app/backdrop/$file bin/ }
 
 set boot_modules {
 	core init
 	platform_drv
-	uart_drv
 	timer
+	fb_drv
+	usb_drv
+	nitpicker
+	pointer
+	status_bar
+	report_rom
 	vmm
 	linux
 	dtb
+	wm
+	decorator
+	floating_window_layouter
+	backdrop
+	terminal
+	nit_fb
+	cli_monitor
+	ld.lib.so libpng.lib.so libc.lib.so libm.lib.so zlib.lib.so
+	genode_logo.png grid.png
 }
 build_boot_image $boot_modules
 
 #
 # Execute test case
 #
-run_genode_until {.*\/ #.*} 220
-set serial_id [output_spawn_id]
-send -i $serial_id "ls\n"
-run_genode_until "var" 30 $serial_id
-exec rm bin/linux bin/dtb
+run_genode_until forever
