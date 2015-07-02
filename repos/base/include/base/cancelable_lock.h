@@ -34,11 +34,12 @@ class Genode::Cancelable_lock
 
 				Thread_base *_thread_base;
 				Applicant   *_to_wake_up;
+				bool         _lock_valid;
 
 			public:
 
 				explicit Applicant(Thread_base *thread_base)
-				: _thread_base(thread_base), _to_wake_up(0) { }
+				: _thread_base(thread_base), _to_wake_up(0), _lock_valid(true) { }
 
 				void applicant_to_wake_up(Applicant *to_wake_up) {
 					_to_wake_up = to_wake_up; }
@@ -47,10 +48,17 @@ class Genode::Cancelable_lock
 
 				Thread_base *thread_base() { return _thread_base; }
 
+				bool lock_valid() { return _lock_valid; }
+
 				/**
 				 * Called from previous lock owner
 				 */
 				void wake_up();
+
+				/**
+				 * Signals the applicant that the lock got destroyed
+				 */
+				void lock_invalidated();
 
 				bool operator == (Applicant &a) { return _thread_base == a.thread_base(); }
 				bool operator != (Applicant &a) { return _thread_base != a.thread_base(); }
@@ -69,12 +77,16 @@ class Genode::Cancelable_lock
 
 	public:
 
+		class Lock_invalidated : Exception {};
+
 		enum State { LOCKED, UNLOCKED };
 
 		/**
 		 * Constructor
 		 */
 		explicit Cancelable_lock(State initial = UNLOCKED);
+
+		~Cancelable_lock();
 
 		/**
 		 * Try to aquire the lock and block while the lock is not free

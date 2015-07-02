@@ -62,6 +62,12 @@ void Cancelable_lock::Applicant::wake_up()
 }
 
 
+void Cancelable_lock::Applicant::lock_invalidated()
+{
+	_lock_valid = false;
+}
+
+
 /*********************
  ** Cancelable lock **
  *********************/
@@ -111,6 +117,12 @@ void Cancelable_lock::lock()
 	 * !   thread_yield();
 	 */
 	thread_stop_myself();
+
+	/*
+	 * If the lock got destroyed while the applicant was waiting
+	 * throw an exception
+	 */
+	if (!myself.lock_valid()) throw Lock_invalidated();
 
 	/*
 	 * We expect to be the lock owner when woken up. If this is not
@@ -182,3 +194,19 @@ Cancelable_lock::Cancelable_lock(Cancelable_lock::State initial)
 		lock();
 }
 
+
+Cancelable_lock::~Cancelable_lock()
+{
+	spinlock_lock(&_spinlock_state);
+
+	if (_state == LOCKED) {
+
+		/* iterate through the applicants list and wake them up */
+		for (Applicant *a = &_owner; a; a = a->applicant_to_wake_up()) {
+			a->lock_invalidated();
+			if (a != &_owner) a->wake_up();
+		}
+	}
+
+	spinlock_unlock(&_spinlock_state);
+}
