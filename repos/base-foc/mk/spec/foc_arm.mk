@@ -16,11 +16,6 @@ L4_INC_DIR  = $(BUILD_BASE_DIR)/include/arm
 L4F_INC_DIR = $(BUILD_BASE_DIR)/include/arm/l4f
 
 #
-# Support for Fiasco.OC's ARM-specific atomic functions
-#
-REP_INC_DIR += include/arm
-
-#
 # Defines for L4/sys headers
 #
 CC_OPT += -DCONFIG_L4_CALL_SYSCALLS -DARCH_arm
