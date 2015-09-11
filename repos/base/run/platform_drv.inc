@@ -16,7 +16,7 @@ proc append_platform_drv_build_components {} {
 	lappend_if [have_platform_drv] build_components drivers/platform
 	lappend_if [have_spec acpi]    build_components drivers/acpi
 	lappend_if [have_spec acpi]    build_components server/report_rom
-	lappend_if [have_spec nova]    build_components drivers/platform/x86/device_pd
+	lappend_if [have_spec nova]    build_components drivers/platform/spec/x86/device_pd
 }
 
 proc append_platform_drv_boot_modules {} {
