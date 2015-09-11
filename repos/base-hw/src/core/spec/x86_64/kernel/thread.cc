@@ -28,9 +28,11 @@ void Kernel::Thread::_mmu_exception()
 	 * core should never raise a page-fault,
 	 * if this happens print out an error message with debug information
 	 */
-	if (_pd == Kernel::core_pd())
+	if (_pd == Kernel::core_pd()) {
 		PERR("Pagefault in core thread (%s): ip=%p fault=%p",
 		     label(), (void*)ip, (void*)_fault_addr);
+		print_backtrace();
+	}
 
 	_fault.submit();
 	return;

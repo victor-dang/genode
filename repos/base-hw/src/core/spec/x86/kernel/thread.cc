@@ -45,3 +45,14 @@ void Thread::exception(unsigned const cpu)
 		 " at ip=%p", pd_label(), label(), trapno, errcode, (void*)ip);
 	_stop();
 }
+
+
+void Thread::print_backtrace()
+{
+	PINF("Backtrace of %s -> %s", pd_label(), label());
+	addr_t * fp = (addr_t*)rbp;
+	while (fp && *fp) {
+		Genode::printf("%lx\n", *(fp + 1));
+		fp = (addr_t*)*fp;
+	}
+}

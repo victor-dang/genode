@@ -69,9 +69,11 @@ void Thread::_mmu_exception()
 		 * core should never raise a page-fault,
 		 * if this happens print out an error message with debug information
 		 */
-		if (_pd == Kernel::core_pd())
+		if (_pd == Kernel::core_pd()) {
 			PERR("Pagefault in core thread (%s): ip=%p fault=%p",
 			     label(), (void*)ip, (void*)_fault_addr);
+			print_backtrace();
+		}
 
 		_fault.submit();
 		return;
@@ -84,4 +86,15 @@ void Thread::_call_update_pd()
 {
 	Pd * const pd = (Pd *) user_arg_1();
 	if (Cpu_domain_update::_do_global(pd->asid)) { _pause(); }
+}
+
+
+void Thread::print_backtrace()
+{
+	PINF("Backtrace of %s -> %s", pd_label(), label());
+	addr_t * fp = (addr_t*)r11;
+	while (fp && *fp) {
+		Genode::printf("%lx\n", *fp);
+		fp = (addr_t*)*(fp - 1);
+	}
 }

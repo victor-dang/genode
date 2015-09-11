@@ -336,6 +336,7 @@ class Kernel::Thread
 		static void syscall_destroy(Thread * thread) {
 			call(call_id_delete_thread(), (Call_arg)thread); }
 
+		void print_backtrace();
 
 		/*************
 		 ** Cpu_job **
