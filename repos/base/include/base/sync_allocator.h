@@ -70,6 +70,12 @@ class Genode::Synchronized_allocator : public Allocator
 		 */
 		ALLOCATOR_IMPL *raw() { return &_alloc; }
 
+		/**
+		 * Return reference to synchronization lock
+		 */
+		Lock *lock() { return _lock; }
+
+
 		/*************************
 		 ** Allocator interface **
 		 *************************/
