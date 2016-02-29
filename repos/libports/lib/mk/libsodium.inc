@@ -113,8 +113,9 @@ SRC_C    = crypto_aead/aes256gcm/aesni/aead_aes256gcm_aesni.c \
            sodium/runtime.c \
            sodium/utils.c \
            sodium/version.c
-SRC_C   += randombytes_salsa20_jitterentropy.c
+SRC_C   += randombytes_salsa20_jitterentropy.c pbkdf2_sha256.c
 
 vpath randombytes_salsa20_jitterentropy.c $(REP_DIR)/src/lib/libsodium
-vpath %.cc $(REP_DIR)/src/lib/libsodium
-vpath %.c  $(LIBSODIUM_SRC_DIR)
+vpath pbkdf2_sha256.c                     $(REP_DIR)/src/lib/libsodium
+vpath %.cc                                $(REP_DIR)/src/lib/libsodium
+vpath %.c                                 $(LIBSODIUM_SRC_DIR)

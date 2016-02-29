@@ -1,0 +1,122 @@
+#
+# \brief  Automated testing of crypt_blk
+# \author Stefan Kalkowski
+# \date   2016-02-12
+#
+
+if {![have_spec x86]} {
+	puts "Run script does not support this platform."
+	exit 0
+}
+
+set dd         [check_installed dd]
+set cryptsetup [check_installed cryptsetup]
+
+set build_components {
+	core init
+	drivers/timer
+	drivers/ahci
+	server/crypt_blk
+	test/blk/cli
+}
+
+# platform-specific modules
+source ${genode_dir}/repos/base/run/platform_drv.inc
+append_platform_drv_build_components
+
+build $build_components
+
+create_boot_directory
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="LOG"/>
+		<service name="CAP"/>
+		<service name="RAM"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_PORT"/>
+		<service name="IO_MEM"/>
+		<service name="SIGNAL"/>
+	</parent-provides>}
+
+append_platform_drv_config
+
+append config {
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+		<route> <any-service> <parent/> </any-service> </route>
+	</start>
+	<start name="ahci_drv">
+		<resource name="RAM" quantum="10M" />
+		<provides><service name="Block" /></provides>
+		<config>
+			<policy label="crypt_blk" device="0" />
+		</config>
+		<route>
+			<service name="Platform"> <child name="platform_drv"/> </service>
+			<service name="Timer">    <child name="timer"/>        </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+	<start name="crypt_blk">
+		<resource name="RAM" quantum="1M" />
+		<provides><service name="Block"/></provides>
+		<config key-rom="credentials" key-size="256"/>
+		<route>
+			<service name="Block"> <child name="ahci_drv"/> </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+	<start name="test-blk-cli">
+		<resource name="RAM" quantum="50M" />
+		<config test_size="100M"></config>
+		<route>
+			<service name="Timer"> <child name="timer"/>     </service>
+			<service name="Block"> <child name="crypt_blk"/> </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+</config>}
+
+install_config $config
+
+#
+# Build crypto image
+#
+if {![file exists bin/image.raw]} {
+	exec dd if=/dev/zero of=bin/image.raw bs=1 count=0 seek=1M 2>/dev/null
+	exec dd if=/dev/urandom of=bin/credentials bs=1 count=256 2>/dev/null
+	exec sudo -p "sudo password to create dm-crypt mapping" cryptsetup --hash=plain --cipher=aes-cbc-essiv:sha256 --key-size=256 --key-file bin/credentials create test-crypt_blk bin/image.raw
+	exec sudo -p "sudo password to fill dm-crypt dev with zeroes" dd if=/dev/zero of=/dev/mapper/test-crypt_blk bs=512 count=2048 2>/dev/null
+	exec sudo -p "sudo password to destroy dm-crypt mapping" cryptsetup plainClose test-crypt_blk
+}
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core init
+	timer
+	ahci_drv
+	crypt_blk
+	test-blk-cli
+	credentials
+}
+append_platform_drv_boot_modules
+build_boot_image $boot_modules
+
+append qemu_args " -nographic -m 96 "
+append qemu_args " -drive id=disk,file=bin/image.raw,if=none "
+append qemu_args " -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 "
+append qemu_args " -boot d"
+
+run_genode_until "Tests finished successfully!" 100
+exec rm -f bin/image.raw bin/credentials
