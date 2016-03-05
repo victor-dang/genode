@@ -146,7 +146,7 @@ namespace Genode {
 				write<Csl00::Slave_a>(Csl00::UNSECURE);
 
 				/* TVE */
-				write<Csl22::Slave_b>(Csl00::SECURE);
+				write<Csl22::Slave_b>(Csl00::UNSECURE);
 
 				/* I2C */
 				Csl00::access_t constexpr i2c_csl =
@@ -157,7 +157,7 @@ namespace Genode {
 				write<Csl31::Slave_a>(i2c_csl);
 
 				/* IPU */
-				write<Csl24::Slave_a>(Csl00::SECURE);
+				write<Csl24::Slave_a>(Csl00::UNSECURE);
 
 				/* Audio */
 				write<Csl18::Slave_b>(Csl00::UNSECURE);
@@ -181,10 +181,10 @@ namespace Genode {
 				write<Csl29::Slave_a>(Csl00::UNSECURE);
 
 				/* GPU 2D */
-				write<Csl24::Slave_b>(Csl00::SECURE);
+				write<Csl24::Slave_b>(Csl00::UNSECURE);
 
 				/* GPU 3D */
-				write<Csl27::Slave_b>(Csl00::SECURE);
+				write<Csl27::Slave_b>(Csl00::UNSECURE);
 
 				write<Csl02::Slave_b>(Csl00::UNSECURE);
 				write<Csl03::Slave_a>(Csl00::UNSECURE);
@@ -210,7 +210,7 @@ namespace Genode {
 				write<Csl20::Slave_b>(Csl00::UNSECURE);
 				write<Csl21::Slave_a>(Csl00::UNSECURE);
 				write<Csl21::Slave_b>(Csl00::UNSECURE);
-				write<Csl23::Slave_a>(Csl00::SECURE); //VPU
+				write<Csl23::Slave_a>(Csl00::UNSECURE); //VPU
 				write<Csl23::Slave_b>(Csl00::UNSECURE);
 				write<Csl26::Slave_b>(Csl00::UNSECURE);
 				write<Csl27::Slave_a>(Csl00::UNSECURE);
@@ -219,7 +219,7 @@ namespace Genode {
 				write<Csl31::Slave_b>(Csl00::UNSECURE);
 
 				/* DMA from graphical subsystem is considered to be secure */
-				write<Master::Gpu>(Master::SECURE_UNLOCKED);
+				write<Master::Gpu>(Master::UNSECURE_UNLOCKED);
 
 				/* all other DMA operations are insecure */
 				write<Master::Sdma>(Master::UNSECURE_UNLOCKED);
