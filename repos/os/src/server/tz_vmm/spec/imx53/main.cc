@@ -35,7 +35,7 @@ enum {
 };
 
 
-static const char* cmdline_tablet = "console=ttymxc0,115200";
+static const char* cmdline_tablet = "video=mxcdi0fb:RGB666,XGA di0_primary ldb=di0 earlyprintk loglevel=10";
 
 void on_vmm_entry();
 void on_vmm_exit();
