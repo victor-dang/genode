@@ -20,10 +20,10 @@
 namespace Csu_config
 {
 	enum {
-		SECURE_GPIO  = 1,
+		SECURE_GPIO  = 0,
 		SECURE_ESDHC = 0,
-		SECURE_UART  = 0,
-		SECURE_I2C   = 1,
+		SECURE_UART  = 1,
+		SECURE_I2C   = 0,
 	};
 };
 
