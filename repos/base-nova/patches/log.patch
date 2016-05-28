@@ -1,0 +1,207 @@
+--- src/kernel/nova/include/cmdline.hpp
++++ src/kernel/nova/include/cmdline.hpp
+@@ -46,6 +46,7 @@ class Cmdline
+         static bool nopcid;
+         static bool novga;
+         static bool novpid;
++        static bool logmem;
+ 
+         INIT
+         static void init (mword);
+--- src/kernel/nova/include/extern.hpp
++++ src/kernel/nova/include/extern.hpp
+@@ -27,6 +27,7 @@ extern char GIT_VER;
+ extern char PAGE_0;
+ extern char PAGE_1;
+ extern char PAGE_H;
++extern mword PAGE_L;
+ 
+ extern char FRAME_0;
+ extern char FRAME_1;
+--- src/kernel/nova/include/hip.hpp
++++ src/kernel/nova/include/hip.hpp
+@@ -44,7 +44,8 @@ class Hip_mem
+             MB_MODULE   = -2u,
+             ACPI_RSDT   = -3u,
+             ACPI_XSDT   = -4u,
+-            MB2_FB      = -5u
++            MB2_FB      = -5u,
++            HYP_LOG     = -6u
+         };
+ 
+         uint64  addr;
+--- src/kernel/nova/include/memory.hpp
++++ src/kernel/nova/include/memory.hpp
+@@ -40,6 +40,8 @@
+ 
+ #define HV_GLOBAL_CPUS  (CPU_LOCAL - 0x1000000)
+ #define HV_GLOBAL_FBUF  (CPU_LOCAL - PAGE_SIZE * 1)
++/* (CPU_LOCAL - PAGE_SIZE * 2) used by ioapic/dmar/pci !!! hwdev_addr (hwdev_addr = HV_GLOBAL_FBUF) - PAGE_SIZE !!! */
++#define HV_GLOBAL_LBUF  (CPU_LOCAL - PAGE_SIZE * 3)
+ 
+ #define CPU_LOCAL_STCK  (SPC_LOCAL - PAGE_SIZE * 3)
+ #define CPU_LOCAL_APIC  (SPC_LOCAL - PAGE_SIZE * 2)
+--- src/kernel/nova/src/cmdline.cpp
++++ src/kernel/nova/src/cmdline.cpp
+@@ -33,6 +33,7 @@ bool Cmdline::nodl;
+ bool Cmdline::nopcid;
+ bool Cmdline::novga;
+ bool Cmdline::novpid;
++bool Cmdline::logmem;
+ 
+ struct Cmdline::param_map Cmdline::map[] INITDATA =
+ {
+@@ -45,6 +46,7 @@ struct Cmdline::param_map Cmdline::map[] INITDATA =
+     { "nopcid",     &Cmdline::nopcid    },
+     { "novga",      &Cmdline::novga     },
+     { "novpid",     &Cmdline::novpid    },
++    { "logmem",     &Cmdline::logmem    },
+ };
+ 
+ char *Cmdline::get_arg (char **line)
+--- src/kernel/nova/src/hip.cpp
++++ src/kernel/nova/src/hip.cpp
+@@ -146,6 +146,15 @@ void Hip::add_mem (Hip_mem *&mem, T const *map)
+     mem->size = map->len;
+     mem->type = map->type;
+     mem->aux  = 0;
++
++    if (Cmdline::logmem && !PAGE_L &&
++        mem->size >= 2 * PAGE_SIZE &&
++        mem->addr + mem->size < ~0U)
++    {
++        PAGE_L     = static_cast<mword>(((mem->addr + mem->size) & ~(0xFFFUL)) - PAGE_SIZE);
++        mem->size -= ((mem->addr + mem->size) & (0xFFFUL)) + PAGE_SIZE;
++    }
++
+     mem++;
+ }
+ 
+@@ -187,6 +196,14 @@ void Hip::add_check()
+         mem++;
+     }
+ 
++    if (PAGE_L) {
++        mem->addr = PAGE_L;
++        mem->size = PAGE_SIZE;
++        mem->type = Hip_mem::HYP_LOG;
++        mem->aux  = 0;
++        mem++;
++    }
++
+     h->length = static_cast<uint16>(reinterpret_cast<mword>(mem) - reinterpret_cast<mword>(h));
+ 
+     h->freq_tsc = Lapic::freq_tsc;
+--- src/kernel/nova/src/init.cpp
++++ src/kernel/nova/src/init.cpp
+@@ -20,6 +20,7 @@
+ 
+ #include "acpi.hpp"
+ #include "compiler.hpp"
++#include "console_mem.hpp"
+ #include "console_serial.hpp"
+ #include "console_vga.hpp"
+ #include "gsi.hpp"
+@@ -70,6 +71,7 @@ void init (mword mbi)
+     Gsi::setup();
+     Acpi::setup();
+ 
++    Console_mem::con.setup();
+     Console_vga::con.setup();
+ 
+     Keyb::init();
+--- /dev/null
++++ src/kernel/nova/include/console_mem.hpp
+@@ -0,0 +1,53 @@
++/*
++ * Log kernel log to memory
++ *
++ * Copyright (C) 2016 Alexander Boettcher, Genode Labs GmbH
++ *
++ * This file is part of the NOVA microhypervisor.
++ *
++ * NOVA is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ * NOVA is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License version 2 for more details.
++ */
++
++
++#pragma once
++
++#include "console.hpp"
++#include "extern.hpp"
++#include "memory.hpp"
++
++class Console_mem : public Console
++{
++    private:
++
++        ALWAYS_INLINE
++        static inline char *buf()
++        {
++            return reinterpret_cast<char *>(HV_GLOBAL_LBUF);
++        }
++
++        unsigned pos;
++
++    public:
++
++        Console_mem() : pos(0) { }
++
++        void putc (int c) {
++
++            *reinterpret_cast<unsigned *>(buf()) = pos;
++
++            *(buf() + sizeof(pos) + pos) = static_cast<char>(c);
++
++            pos = (pos + 1) % (static_cast<unsigned>(PAGE_SIZE - sizeof(pos)));
++        }
++
++        void setup();
++
++        static Console_mem con;
++};
+--- /dev/null
++++ src/kernel/nova/src/console_mem.cpp
+@@ -0,0 +1,36 @@
++/*
++ * Log kernel log to memory
++ *
++ * Copyright (C) 2016 Alexander Boettcher, Genode Labs GmbH
++ *
++ * This file is part of the NOVA microhypervisor.
++ *
++ * NOVA is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ * NOVA is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License version 2 for more details.
++ */
++
++#include "console_mem.hpp"
++#include "pd.hpp"
++#include "string.hpp"
++
++INIT_PRIORITY (PRIO_CONSOLE) Console_mem Console_mem::con;
++
++mword PAGE_L = 0;
++
++void Console_mem::setup()
++{
++    if (!PAGE_L)
++        return;
++
++    Pd::kern.Space_mem::insert (Pd::kern.quota, HV_GLOBAL_LBUF, 0, Hpt::HPT_NX | Hpt::HPT_G | Hpt::HPT_UC | Hpt::HPT_W | Hpt::HPT_P, PAGE_L);
++
++    memset (reinterpret_cast<void *>(HV_GLOBAL_LBUF), 0, PAGE_SIZE);
++
++    enable();
++}
