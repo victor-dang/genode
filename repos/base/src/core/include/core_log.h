@@ -25,6 +25,9 @@ namespace Genode {
 
 struct Genode::Core_log
 {
+	static Genode::addr_t core_log;
+	static Genode::size_t core_log_size;
+
 	void out(char const c);
 
 	void output(char const * str) {

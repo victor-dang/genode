@@ -23,6 +23,7 @@
 
 /* core includes */
 #include <boot_modules.h>
+#include <core_log.h>
 #include <platform.h>
 #include <nova_util.h>
 #include <util.h>
@@ -706,6 +707,23 @@ Platform::Platform() :
 		_rom_fs.insert(new (core_mem_alloc())
 		               Rom_module(phys_addr, get_page_size(),
 		                          "hypervisor_info_page"));
+	}
+
+	/* core log as ROM module */
+	{
+		void * phys_ptr = 0;
+		const size_t log_size = get_page_size();
+
+		ram_alloc()->alloc(log_size, &phys_ptr);
+		addr_t phys_addr = reinterpret_cast<addr_t>(phys_ptr);
+
+		addr_t core_local_addr = _map_pages(phys_addr >> get_page_size_log2(), 1);
+
+		Core_log::core_log_size = log_size;
+		Core_log::core_log = core_local_addr;
+
+		_rom_fs.insert(new (core_mem_alloc())
+		               Rom_module(phys_addr, log_size, "core_log"));
 	}
 
 	/* export hypervisor log memory */
