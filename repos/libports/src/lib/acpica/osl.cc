@@ -247,9 +247,13 @@ void AcpiOsSleep (UINT64 sleep_ms)
 {
 	Genode::log(__func__, " ", sleep_ms, " ms");
 
+	AcpiOsStall(sleep_ms*1000);
+}
+
+void AcpiOsStall (UINT32 usec)
+{
 	static Timer::Connection conn;
-	conn.msleep(sleep_ms);
-	return;
+	conn.usleep(usec);
 }
 
 
@@ -262,9 +266,6 @@ ACPI_STATUS AcpiOsSignal (UINT32, void *)
 
 UINT64 AcpiOsGetTimer (void)
 	FAIL(0)
-
-void AcpiOsStall (UINT32)
-	FAIL()
 
 ACPI_STATUS AcpiOsReadMemory (ACPI_PHYSICAL_ADDRESS, UINT64 *, UINT32)
 	FAIL(AE_BAD_PARAMETER)
