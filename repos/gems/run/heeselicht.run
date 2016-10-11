@@ -4,6 +4,7 @@ set build_components {
 	app/backdrop
 	app/cli_monitor
 	app/cpu_load_display
+	app/mupdf
 	app/pointer
 	app/themed_decorator
 	app/trace_subject_reporter
@@ -215,6 +216,7 @@ set config {
 			<policy label_prefix="cli_monitor -> noux" label_suffix="system" root="/" writeable="yes"/>
 			<policy label_prefix="cli_monitor -> noux" label_suffix="home" root="/home" writeable="yes"/>
 			<policy label="cli_monitor -> linux -> vbox -> rump_fs" root="/" writeable="yes"/>
+			<policy label_prefix="cli_monitor -> mupdf" root="/home" writeable="no"/>
 			<policy label="rom" root="/genode" writeable="no"/>
 		</config>
 		<route>
@@ -966,20 +968,26 @@ append boot_modules {
 append boot_modules $firmware_modules
 
 set binaries {
-	avplay
-	avresample.lib.so
 	avcodec.lib.so
 	avfilter.lib.so
 	avformat.lib.so
+	avplay
+	avresample.lib.so
 	avutil.lib.so
 	cpu_load_display
+	freetype.lib.so
+	grid.png
 	heeselicht_logo.png
 	heeselight.png
-	grid.png
+	jbig2dec.lib.so
+	jpeg.lib.so
 	libc_noux.lib.so
 	libiconv.lib.so
+	mupdf
+	mupdf.lib.so
 	ncurses.lib.so
 	noux
+	openjpeg.lib.so
 	plain_decorator_theme.tar
 	pthread.lib.so
 	qemu-usb.lib.so
@@ -994,7 +1002,7 @@ foreach pkg $noux_pkgs { append binaries " $pkg.tar " }
 
 # copy subsystem configurations to boot directory
 exec mkdir -p [run_dir]/subsystems
-foreach subsystem { noux linux cpu_load_display media_player } {
+foreach subsystem { noux linux cpu_load_display media_player mupdf } {
 	file copy -force [genode_dir]/repos/gems/run/subsystems/$subsystem.subsystem \
 		[run_dir]/subsystems/ }
 
