@@ -271,6 +271,3 @@ void Component::construct(Genode::Env &env)
 	/* return to entrypoint and exit via exit_on_suspended() */
 }
 
-
-Genode::size_t Component::stack_size() __attribute__((weak));
-Genode::size_t Component::stack_size() { return 64*1024; }
