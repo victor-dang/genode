@@ -100,3 +100,56 @@ binary_%.o: %
 	$(MSG_CONVERT)$@
 	$(VERBOSE)echo ".global $(symbol_name)_start, $(symbol_name)_end; .data; .align 4; $(symbol_name)_start:; .incbin \"$<\"; $(symbol_name)_end:" |\
 		$(AS) $(AS_OPT) -f -o $@ -
+
+#
+# Generate assembler file from symbol list
+#
+# For undefined symbols (type U), we create a hard dependency by referencing
+# the symbols from the assembly file. The reference is created in the form of
+# a '.long' value with the address of the symbol. On x86_64, this is not
+# possible for PIC code. Hence, we reference the symbol via a PIC-compatible
+# movq instruction instead.
+#
+# If we declared the symbol as '.global' without using it, the undefined symbol
+# gets discarded at link time unless it is directly referenced by the target.
+# This is a problem in situations where the undefined symbol is resolved by an
+# archive rather than the target. I.e., when linking posix.lib.a (which
+# provides 'Libc::Component::construct'), the 'construct' function is merely
+# referenced by the libc.lib.so's 'Component::construct' function. But this
+# reference apparently does not suffice to keep the posix.lib.a's symbol. By
+# adding a hard dependency, we force the linker to resolve the symbol and don't
+# drop posix.lib.a.
+#
+ASM_SYM_DEPENDENCY := .long \1
+ifeq ($(filter-out $(SPECS),x86_64),)
+ASM_SYM_DEPENDENCY := movq \1@GOTPCREL(%rip), %rax
+endif
+
+%.symbols.s: %.symbols
+	$(MSG_CONVERT)$@
+	$(VERBOSE)\
+		sed -e "s/^\(\w\+\) D \(\w\+\)\$$/.data; .global \1; .type \1,%object; .size \1,\2; \1:/p" \
+		    -e "s/^\(\w\+\) V/.data; .weak \1; .type \1,%object; \1:/p" \
+		    -e "s/^\(\w\+\) T/.text; .global \1; .type \1,%function; \1:/p" \
+		    -e "s/^\(\w\+\) R/.section .rodata; .global \1; \1:/p" \
+		    -e "s/^\(\w\+\) W/.text; .weak \1; .type \1,%function; \1:/p" \
+		    -e "s/^\(\w\+\) B/.bss; .global \1; .type \1,%object; \1:/p" \
+		    -e "s/^\(\w\+\) U/.text; .global \1; $(ASM_SYM_DEPENDENCY)/p" \
+		    $< > $@
+
+#
+# Create local symbol links for the used shared libraries
+#
+# Depending on whether an ABI stub for a given shared library exists, we link
+# the target against the ABI stub or the real shared library.
+#
+# The 'SHARED_LIBS' are phony to make sure that the symbolic links are always
+# up-to-date. E.g., if a symbols list is added for library, the next time a
+# user of the library is linked, the ABI stub should be used instead of the
+# library.
+#
+.PHONY: $(SHARED_LIBS)
+$(SHARED_LIBS):
+	$(VERBOSE)ln -sf $(firstword $(wildcard $(LIB_CACHE_DIR)/$(@:.lib.so=)/$(@:.lib.so=).abi.so \
+	                                        $(LIB_CACHE_DIR)/$(@:.lib.so=)/$(@:.lib.so=).lib.so)) $@
+
