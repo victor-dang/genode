@@ -10,8 +10,11 @@
 # type, and size
 #
 
+# normalize sort order across platforms
+set env(LC_COLLATE) C
+
 # obtain symbol information via 'nm'
-set symbols [exec nm --format posix --dynamic $argv]
+set symbols [exec nm --format posix --dynamic $argv | sort]
 
 # obtain demangled input via c++filt
 set demangled [exec c++filt << $symbols]
