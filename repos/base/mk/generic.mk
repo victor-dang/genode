@@ -143,13 +143,19 @@ endif
 # Depending on whether an ABI stub for a given shared library exists, we link
 # the target against the ABI stub or the real shared library.
 #
-# The 'SHARED_LIBS' are phony to make sure that the symbolic links are always
-# up-to-date. E.g., if a symbols list is added for library, the next time a
-# user of the library is linked, the ABI stub should be used instead of the
-# library.
+# We check if the symbolic links are up-to-date by filtering all links that
+# already match the current shared library targets from the list. If the list
+# is not empty we flag 'SHARED_LIBS' as phony to make sure that the symbolic
+# links are recreated. E.g., if a symbol list is added for library, the next
+# time a user of the library is linked, the ABI stub should be used instead of
+# the library.
 #
-.PHONY: $(SHARED_LIBS)
-$(SHARED_LIBS):
-	$(VERBOSE)ln -sf $(firstword $(wildcard $(LIB_CACHE_DIR)/$(@:.lib.so=)/$(@:.lib.so=).abi.so \
-	                                        $(LIB_CACHE_DIR)/$(@:.lib.so=)/$(@:.lib.so=).lib.so)) $@
+select_so = $(firstword $(wildcard $(LIB_CACHE_DIR)/$(1:.lib.so=)/$(1:.lib.so=).abi.so \
+                                   $(LIB_CACHE_DIR)/$(1:.lib.so=)/$(1:.lib.so=).lib.so))
 
+ifneq ($(filter-out $(foreach s,$(SHARED_LIBS),$(realpath $s)), \
+                    $(foreach s,$(SHARED_LIBS),$(call select_so,$s))),)
+.PHONY: $(SHARED_LIBS)
+endif
+$(SHARED_LIBS):
+	$(VERBOSE)ln -sf $(call select_so,$@) $@
