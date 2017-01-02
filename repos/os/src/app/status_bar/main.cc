@@ -14,7 +14,8 @@
 #include <util/reconstructible.h>
 #include <util/xml_node.h>
 #include <util/color.h>
-#include <os/attached_rom_dataspace.h>
+#include <base/component.h>
+#include <base/attached_rom_dataspace.h>
 #include <os/pixel_rgb565.h>
 #include <nitpicker_session/connection.h>
 #include <nitpicker_gfx/box_painter.h>
@@ -178,21 +179,21 @@ void Status_bar_buffer::draw(Domain_name const &domain_name,
 
 struct Main
 {
-	Genode::Attached_rom_dataspace focus_ds { "focus" };
+	Genode::Env &env;
 
-	Genode::Signal_receiver sig_rec;
+	Genode::Attached_rom_dataspace focus_ds { env, "focus" };
 
-	void handle_focus(unsigned);
+	void handle_focus();
 
-	Genode::Signal_dispatcher<Main> focus_signal_dispatcher {
-		sig_rec, *this, &Main::handle_focus };
+	Genode::Signal_handler<Main> focus_signal_handler {
+		env.ep(), *this, &Main::handle_focus };
 
-	void handle_mode(unsigned);
+	void handle_mode();
 
-	Genode::Signal_dispatcher<Main> mode_signal_dispatcher {
-		sig_rec, *this, &Main::handle_mode };
+	Genode::Signal_handler<Main> mode_signal_handler {
+		env.ep(), *this, &Main::handle_mode };
 
-	Nitpicker::Connection nitpicker;
+	Nitpicker::Connection nitpicker { env, "status_bar" };
 
 	/* status-bar attributes */
 	Domain_name domain_name;
@@ -208,23 +209,23 @@ struct Main
 		status_bar_buffer->draw(domain_name, label, color);
 	}
 
-	Main()
+	Main(Genode::Env &env) : env(env)
 	{
 		/* register signal handlers */
-		focus_ds.sigh(focus_signal_dispatcher);
-		nitpicker.mode_sigh(mode_signal_dispatcher);
+		focus_ds.sigh(focus_signal_handler);
+		nitpicker.mode_sigh(mode_signal_handler);
 
 		/* schedule initial view-stacking command, needed only once */
 		nitpicker.enqueue<Nitpicker::Session::Command::To_front>(view);
 
 		/* import initial state */
-		handle_mode(0);
-		handle_focus(0);
+		handle_mode();
+		handle_focus();
 	}
 };
 
 
-void Main::handle_focus(unsigned)
+void Main::handle_focus()
 {
 	/* fetch new content of the focus ROM module */
 	focus_ds.update();
@@ -251,7 +252,7 @@ void Main::handle_focus(unsigned)
 }
 
 
-void Main::handle_mode(unsigned)
+void Main::handle_mode()
 {
 	status_bar_buffer.construct(nitpicker);
 
@@ -265,20 +266,5 @@ void Main::handle_mode(unsigned)
 }
 
 
-int main(int, char **)
-{
-	static Main main;
-
-	/* dispatch signals */
-	for (;;) {
-
-		Genode::Signal sig = main.sig_rec.wait_for_signal();
-		Genode::Signal_dispatcher_base *dispatcher =
-			dynamic_cast<Genode::Signal_dispatcher_base *>(sig.context());
-
-		if (dispatcher)
-			dispatcher->dispatch(sig.num());
-	}
-
-	return 0;
-}
+void Component::construct(Genode::Env &env) {
+	static Main main { env }; }
