@@ -12,10 +12,9 @@
  */
 
 /* Genode includes */
-#include <os/attached_rom_dataspace.h>
+#include <base/component.h>
+#include <base/attached_rom_dataspace.h>
 #include <nitpicker_session/connection.h>
-#include <os/server.h>
-#include <os/config.h>
 #include <os/reporter.h>
 #include <input/event.h>
 #include <input/keycodes.h>
@@ -27,17 +26,22 @@ namespace Xray_trigger { struct Main; }
 
 struct Xray_trigger::Main
 {
-	Server::Entrypoint &_ep;
+	Genode::Env &_env;
+
+	/**
+	 * Configuration buffer
+	 */
+	Genode::Attached_rom_dataspace _config { _env, "config" };
 
 	/**
 	 * Nitpicker connection to obtain user input
 	 */
-	Nitpicker::Connection _nitpicker;
+	Nitpicker::Connection _nitpicker { _env, "input" };
 
 	/**
 	 * Input-event buffer
 	 */
-	Genode::Attached_dataspace _ev_ds { _nitpicker.input()->dataspace() };
+	Genode::Attached_dataspace _ev_ds { _env.rm(), _nitpicker.input()->dataspace() };
 
 	/**
 	 * Number of pressed keys, used to distinguish primary keys from key
@@ -58,7 +62,7 @@ struct Xray_trigger::Main
 	/**
 	 * Timer to delay the xray report
 	 */
-	Timer::Connection _timer;
+	Timer::Connection _timer { _env };
 
 	/**
 	 * X-Ray criterion depending on key events
@@ -79,10 +83,10 @@ struct Xray_trigger::Main
 	 * Handler that is called on config changes, on hover-model changes, or on
 	 * the arrival of user input
 	 */
-	void _handle_update(unsigned);
+	void _handle_update();
 
-	Genode::Signal_rpc_member<Main> _update_dispatcher =
-		{ _ep, *this, &Main::_handle_update };
+	Genode::Signal_handler<Main> _update_handler =
+		{ _env.ep(), *this, &Main::_handle_update };
 
 	void _report_xray()
 	{
@@ -94,26 +98,21 @@ struct Xray_trigger::Main
 	/**
 	 * Handler that is called after the xray report delay
 	 */
-	void _handle_timeout(unsigned)
+	Genode::Signal_handler<Main> _timeout_handler =
+		{ _env.ep(), *this, &Main::_report_xray };
+
+	Main(Genode::Env &env) : _env(env)
 	{
-		_report_xray();
-	}
+		_config.sigh(_update_handler);
 
-	Genode::Signal_rpc_member<Main> _timeout_dispatcher =
-		{ _ep, *this, &Main::_handle_timeout };
-
-	Main(Server::Entrypoint &ep) : _ep(ep)
-	{
-		Genode::config()->sigh(_update_dispatcher);
-
-		_timer.sigh(_timeout_dispatcher);
+		_timer.sigh(_timeout_handler);
 
 		/* enable xray reporter and produce initial xray report */
 		_xray_reporter.enabled(true);
 		_report_xray();
 
-		_nitpicker.input()->sigh(_update_dispatcher);
-		_handle_update(0);
+		_nitpicker.input()->sigh(_update_handler);
+		_handle_update();
 	}
 };
 
@@ -178,7 +177,7 @@ bool Xray_trigger::Main::_evaluate_input(bool key_xray, unsigned num_ev,
 				key_xray = !_key_xray;
 		};
 
-		Genode::config()->xml_node().for_each_sub_node(lambda);
+		_config.xml().for_each_sub_node(lambda);
 	}
 	return key_xray;
 }
@@ -190,7 +189,7 @@ bool Xray_trigger::Main::_evaluate_hover(Genode::Xml_node nitpicker_hover) const
 
 	using namespace Genode;
 
-	config()->xml_node().for_each_sub_node("hover", [&] (Xml_node node) {
+	_config.xml().for_each_sub_node("hover", [&] (Xml_node node) {
 
 		typedef String<160> Domain;
 		Domain nitpicker_domain = nitpicker_hover.attribute_value("domain", Domain());
@@ -203,9 +202,9 @@ bool Xray_trigger::Main::_evaluate_hover(Genode::Xml_node nitpicker_hover) const
 }
 
 
-void Xray_trigger::Main::_handle_update(unsigned)
+void Xray_trigger::Main::_handle_update()
 {
-	Genode::config()->reload();
+	_config.update();
 
 	/* remember X-Ray mode prior applying the changes */
 	bool const orig_xray = _xray();
@@ -216,11 +215,11 @@ void Xray_trigger::Main::_handle_update(unsigned)
 		                            _key_cnt);
 
 	/* obtain / update hover model if needed */
-	if (Genode::config()->xml_node().has_sub_node("hover")) {
+	if (_config.xml().has_sub_node("hover")) {
 
 		if (!_hover_ds.constructed()) {
 			_hover_ds.construct("hover");
-			_hover_ds->sigh(_update_dispatcher);
+			_hover_ds->sigh(_update_handler);
 		}
 
 		_hover_ds->update();
@@ -237,11 +236,12 @@ void Xray_trigger::Main::_handle_update(unsigned)
 }
 
 
-namespace Server {
+/***************
+ ** Component **
+ ***************/
 
-	char const *name() { return "ep"; }
+Genode::size_t Component::stack_size() {
+	return 16*1024*sizeof(long); }
 
-	size_t stack_size() { return 16*1024*sizeof(long); }
-
-	void construct(Entrypoint &ep) { static Xray_trigger::Main main(ep); }
-}
+void Component::construct(Genode::Env &env) {
+	static Xray_trigger::Main main(env); }
