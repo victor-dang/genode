@@ -6,21 +6,21 @@
  */
 
 /*
- * Copyright (C) 2007-2013 Genode Labs GmbH
+ * Copyright (C) 2007-2017 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU General Public License version 2.
  */
 
-#include <base/env.h>
-#include <base/sleep.h>
-#include <base/stdint.h>
+/* Genode includes */
 #include <base/log.h>
-#include <base/snprintf.h>
 #include <io_mem_session/connection.h>
+#include <platform_session/connection.h>
 
+/* local includes */
 #include "framebuffer.h"
 #include "ifx86emu.h"
+#include "hw_emul.h"
 #include "vesa.h"
 #include "vbe.h"
 
@@ -47,8 +47,8 @@ static inline uint32_t to_phys(uint32_t addr)
 
 
 static uint16_t get_vesa_mode(mb_vbe_ctrl_t *ctrl_info, mb_vbe_mode_t *mode_info,
-                              unsigned long &width, unsigned long &height,
-                              unsigned long depth, bool verbose)
+                              unsigned &width, unsigned &height, unsigned depth,
+                              bool verbose)
 {
 	bool choose_highest_resolution_mode = ((width == 0) || (height == 0));
 
@@ -143,15 +143,15 @@ static uint16_t get_vesa_mode(mb_vbe_ctrl_t *ctrl_info, mb_vbe_mode_t *mode_info
  ** Driver API **
  ****************/
 
-Dataspace_capability Framebuffer_drv::hw_framebuffer()
+Dataspace_capability Framebuffer::hw_framebuffer()
 {
 	return io_mem_cap;
 }
 
 
-int Framebuffer_drv::map_io_mem(addr_t base, size_t size, bool write_combined,
-                                void **out_addr, addr_t addr,
-                                Dataspace_capability *out_io_ds)
+int Framebuffer::map_io_mem(addr_t base, size_t size, bool write_combined,
+                            void **out_addr, addr_t addr,
+                            Dataspace_capability *out_io_ds)
 {
 	Io_mem_connection &io_mem = *new (env()->heap())
 		Io_mem_connection(base, size, write_combined);
@@ -175,8 +175,7 @@ int Framebuffer_drv::map_io_mem(addr_t base, size_t size, bool write_combined,
 }
 
 
-int Framebuffer_drv::set_mode(unsigned long &width, unsigned long &height,
-                              unsigned long mode)
+int Framebuffer::set_mode(unsigned &width, unsigned &height, unsigned mode)
 {
 	mb_vbe_ctrl_t *ctrl_info;
 	mb_vbe_mode_t *mode_info;
@@ -260,10 +259,17 @@ int Framebuffer_drv::set_mode(unsigned long &width, unsigned long &height,
  ** Driver startup **
  ********************/
 
-int Framebuffer_drv::init()
+void Framebuffer::init(Genode::Env &env, Genode::Allocator &heap)
 {
-	if (X86emu::init())
-		return -1;
+	{
+		/*
+		 * Wait until Acpi/Pci driver initialization is done to avoid
+		 * potentially concurrent access by this driver and the Acpi/Pci driver
+		 * to the graphics device, i.e., to the PCI config space.
+		 */
+		Platform::Connection sync;
+	}
 
-	return 0;
+	hw_emul_init(env);
+	X86emu::init(env, heap);
 }
