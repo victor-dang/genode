@@ -34,10 +34,11 @@ usage:
 	@echo "                  'zynq_qemu'"
 	@echo "                  'muen'"
 	@echo "                  'riscv_spike'"
-	@echo "                  'linux_arm'"
+	@echo "                  'linux'"
 	@echo
 	@echo "  the following <platform> arguments are deprecated:"
-	@echo "                  'linux_x86'       (use 'x86_*')"
+	@echo "                  'linux_x86'       (use 'linux')"
+	@echo "                  'linux_arm'       (use 'linux')"
 	@echo "                  'fiasco_x86'      (use 'x86_32')"
 	@echo "                  'okl4_x86'        (use 'x86_32')"
 	@echo "                  'pistachio_x86'   (use 'x86_32')"
@@ -133,10 +134,11 @@ BUILD_CONF(odroid_x2)    := run_kernel_foc    run_boot_dir repos
 BUILD_CONF(zynq_qemu)    := run_kernel_hw run_qemu run_opt_hw run_boot_dir qemu_opt_arm repos
 BUILD_CONF(muen)         := run_kernel_hw run_opt_muen        run_boot_dir repos
 BUILD_CONF(riscv_spike)  := run_kernel_hw run_opt_spike       run_boot_dir repos
-BUILD_CONF(linux_arm)    := run_kernel_linux repos
+BUILD_CONF(linux)        := run_kernel_linux repos
 
 # deprecated platforms, to be removed
 BUILD_CONF(linux_x86)       := run_kernel_linux repos
+BUILD_CONF(linux_arm)       := run_kernel_linux repos
 BUILD_CONF(fiasco_x86)      := run_kernel_fiasco    $(BUILD_CONF_X86_32)
 BUILD_CONF(okl4_x86)        := run_kernel_okl4      $(BUILD_CONF_X86_32)
 BUILD_CONF(pistachio_x86)   := run_kernel_pistachio $(BUILD_CONF_X86_32)
@@ -184,7 +186,21 @@ $(BUILD_DIR)/etc/build.conf: $(BUILD_DIR)/etc
 $(BUILD_DIR)/etc/specs.conf: $(BUILD_DIR)/etc
 
 #
+# Detect host CPU architecture (needed for creating Linux build directory that
+# matches the host system)
+#
+UNAME_MACHINE := $(shell uname -m)
+
+SPEC_ARCH(i686)   := x86_32
+SPEC_ARCH(x86_64) := x86_64
+SPEC_ARCH(armv6l) := armv_v6
+SPEC_ARCH(armv7l) := armv_v7
+
+HOST_SPEC_ARCH := ${SPEC_ARCH(${UNAME_MACHINE})}
+
+#
 # SPECS definitions
+#
 #
 
 SPECS(x86_32)       := x86_32
@@ -202,10 +218,11 @@ SPECS(odroid_x2)    := foc_odroid_x2 odroid_x2
 SPECS(zynq_qemu)    := zynq_qemu
 SPECS(muen)         := muen x86_64
 SPECS(riscv_spike)  := riscv
-SPECS(linux_arm)    := arm
+SPECS(linux)        := $(HOST_SPEC_ARCH)
 
 # deprecated platforms
-SPECS(linux_x86)       :=
+SPECS(linux_x86)       := $(HOST_SPEC_ARCH)
+SPECS(linux_arm)       := $(HOST_SPEC_ARCH)
 SPECS(fiasco_x86)      :=
 SPECS(okl4_x86)        :=
 SPECS(pistachio_x86)   :=
