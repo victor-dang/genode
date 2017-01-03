@@ -919,7 +919,7 @@ _socket T
 _writev T
 
 
-_ZN4Libc9Component9constructERN6Genode3EnvE U
+_ZN4Libc9Component9constructERNS_3EnvE U
 
 #
 # Libc plugin interface
