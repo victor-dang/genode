@@ -25,7 +25,6 @@
 #include <line_editor.h>
 #include <command_line.h>
 #include <format_util.h>
-#include <extension.h>
 #include <status_command.h>
 #include <kill_command.h>
 #include <start_command.h>
@@ -179,9 +178,6 @@ struct Cli_monitor::Main
 
 	Main(Env &env) : _env(env)
 	{
-		/* initialize platform-specific commands */
-		init_extension(_commands);
-
 		_terminal.read_avail_sigh(_terminal_read_avail_handler);
 	}
 };
