@@ -322,7 +322,7 @@ foreach platform $platforms {
 	}
 
 	if {[info exists ::env(RUN_OPT_AUTOPILOT)]} {
-		exec echo "RUN_OPT  =  --include boot_dir/$(KERNEL)" >> $build_conf
+		exec echo "RUN_OPT  =  --include boot_dir/\$(KERNEL)" >> $build_conf
 		exec echo "RUN_OPT += $::env(RUN_OPT_AUTOPILOT)" >> $build_conf
 	}
 
