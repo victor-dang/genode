@@ -3,6 +3,11 @@ ___tolower T
 ___toupper T
 __assert T
 __error T
+__inet_aton T
+__inet_ntoa T
+__inet_ntop T
+__inet_nsap_ntoa T
+__inet_pton T
 __isthreaded B
 __mb_cur_max D 8
 __srget T
@@ -878,6 +883,7 @@ writev T
 wscanf T
 xsi_sigpause T
 
+
 #
 # Symbols needed by libm
 #
@@ -887,12 +893,39 @@ _CurrentRuneLocale D 4
 __isinff T
 __isinfl T
 
+
+#
+# Symbols needed by libc-resolv
+#
+_close T
+_connect T
+_getpeername T
+_getsockname T
+_pthread_getspecific W
+_pthread_key_create W
+_pthread_main_np W
+_pthread_mutex_trylock W
+_pthread_mutex_unlock W
+_pthread_once W
+_pthread_rwlock_rdlock W
+_pthread_rwlock_unlock W
+_pthread_rwlock_wrlock W
+_pthread_setspecific W
+_read T
+_recvfrom T
+_sendto T
+_setsockopt T
+_socket T
+_writev T
+
+
 _ZN4Libc9Component9constructERN6Genode3EnvE U
 
 #
 # Libc plugin interface
 #
-_ZN4Libc9mem_allocEv T
+_ZN4Libc16schedule_suspendEPFvvE T
+_ZN4Libc25File_descriptor_allocator15find_by_libc_fdEi T
 _ZN4Libc25File_descriptor_allocator4freeEPNS_15File_descriptorE T
 _ZN4Libc25File_descriptor_allocator5allocEPNS_6PluginEPNS_14Plugin_contextEi T
 _ZN4Libc25file_descriptor_allocatorEv T
@@ -903,6 +936,7 @@ _ZN4Libc6Plugin11getpeernameEPNS_15File_descriptorEP8sockaddrPj T
 _ZN4Libc6Plugin11getsocknameEPNS_15File_descriptorEP8sockaddrPj T
 _ZN4Libc6Plugin12freeaddrinfoEP8addrinfo T
 _ZN4Libc6Plugin13getdirentriesEPNS_15File_descriptorEPcjPx T
+_ZN4Libc6Plugin13getdirentriesEPNS_15File_descriptorEPcmPl T
 _ZN4Libc6Plugin13supports_mmapEv T
 _ZN4Libc6Plugin13supports_openEPKci T
 _ZN4Libc6Plugin13supports_pipeEv T
@@ -917,35 +951,44 @@ _ZN4Libc6Plugin15supports_socketEiii T
 _ZN4Libc6Plugin15supports_unlinkEPKc T
 _ZN4Libc6Plugin16supports_symlinkEPKcS2_ T
 _ZN4Libc6Plugin17supports_readlinkEPKcPcj T
+_ZN4Libc6Plugin17supports_readlinkEPKcPcm T
 _ZN4Libc6Plugin20supports_getaddrinfoEPKcS2_PK8addrinfoPPS3_ T
 _ZN4Libc6Plugin21supports_freeaddrinfoEP8addrinfo T
 _ZN4Libc6Plugin3dupEPNS_15File_descriptorE T
 _ZN4Libc6Plugin4bindEPNS_15File_descriptorEPK8sockaddrj T
 _ZN4Libc6Plugin4dup2EPNS_15File_descriptorES2_ T
 _ZN4Libc6Plugin4mmapEPvjiiPNS_15File_descriptorEx T
+_ZN4Libc6Plugin4mmapEPvmiiPNS_15File_descriptorEl T
 _ZN4Libc6Plugin4openEPKci T
 _ZN4Libc6Plugin4pipeEPPNS_15File_descriptorE T
 _ZN4Libc6Plugin4readEPNS_15File_descriptorEPvj T
+_ZN4Libc6Plugin4readEPNS_15File_descriptorEPvm T
 _ZN4Libc6Plugin4recvEPNS_15File_descriptorEPvji T
+_ZN4Libc6Plugin4recvEPNS_15File_descriptorEPvmi T
 _ZN4Libc6Plugin4sendEPNS_15File_descriptorEPKvji T
+_ZN4Libc6Plugin4sendEPNS_15File_descriptorEPKvmi T
 _ZN4Libc6Plugin4statEPKcP4stat T
 _ZN4Libc6Plugin5closeEPNS_15File_descriptorE T
 _ZN4Libc6Plugin5fcntlEPNS_15File_descriptorEil T
 _ZN4Libc6Plugin5fstatEPNS_15File_descriptorEP4stat T
 _ZN4Libc6Plugin5fsyncEPNS_15File_descriptorE T
 _ZN4Libc6Plugin5ioctlEPNS_15File_descriptorEiPc T
+_ZN4Libc6Plugin5lseekEPNS_15File_descriptorEli T
 _ZN4Libc6Plugin5lseekEPNS_15File_descriptorExi T
 _ZN4Libc6Plugin5mkdirEPKct T
 _ZN4Libc6Plugin5rmdirEPKc T
 _ZN4Libc6Plugin5writeEPNS_15File_descriptorEPKvj T
+_ZN4Libc6Plugin5writeEPNS_15File_descriptorEPKvm T
 _ZN4Libc6Plugin6acceptEPNS_15File_descriptorEP8sockaddrPj T
 _ZN4Libc6Plugin6accessEPKci T
 _ZN4Libc6Plugin6execveEPKcPKPcS5_ T
 _ZN4Libc6Plugin6listenEPNS_15File_descriptorEi T
 _ZN4Libc6Plugin6munmapEPvj T
+_ZN4Libc6Plugin6munmapEPvm T
 _ZN4Libc6Plugin6renameEPKcS2_ T
 _ZN4Libc6Plugin6selectEiP6fd_setS2_S2_P7timeval T
 _ZN4Libc6Plugin6sendtoEPNS_15File_descriptorEPKvjiPK8sockaddrj T
+_ZN4Libc6Plugin6sendtoEPNS_15File_descriptorEPKvmiPK8sockaddrj T
 _ZN4Libc6Plugin6socketEiii T
 _ZN4Libc6Plugin6unlinkEPKc T
 _ZN4Libc6Plugin7connectEPNS_15File_descriptorEPK8sockaddrj T
@@ -954,14 +997,16 @@ _ZN4Libc6Plugin7recvmsgEPNS_15File_descriptorEP6msghdri T
 _ZN4Libc6Plugin7symlinkEPKcS2_ T
 _ZN4Libc6Plugin8priorityEv T
 _ZN4Libc6Plugin8readlinkEPKcPcj T
+_ZN4Libc6Plugin8readlinkEPKcPcm T
 _ZN4Libc6Plugin8recvfromEPNS_15File_descriptorEPvjiP8sockaddrPj T
+_ZN4Libc6Plugin8recvfromEPNS_15File_descriptorEPvmiP8sockaddrPj T
 _ZN4Libc6Plugin8shutdownEPNS_15File_descriptorEi T
+_ZN4Libc6Plugin9ftruncateEPNS_15File_descriptorEl T
 _ZN4Libc6Plugin9ftruncateEPNS_15File_descriptorEx T
 _ZN4Libc6PluginC1Ei T
 _ZN4Libc6PluginC2Ei T
 _ZN4Libc6PluginD0Ev T
 _ZN4Libc6PluginD1Ev T
 _ZN4Libc6PluginD2Ev T
+_ZN4Libc9mem_allocEv T
 _ZTIN4Libc6PluginE D 18
-_ZN4Libc16schedule_suspendEPFvvE T
-
