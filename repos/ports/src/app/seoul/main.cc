@@ -46,7 +46,6 @@
 /* os includes */
 #include <nic_session/connection.h>
 #include <nic/packet_allocator.h>
-#include <os/alarm.h>
 #include <timer_session/connection.h>
 #include <rtc_session/connection.h>
 
@@ -93,57 +92,68 @@ Genode::Lock *utcb_lock()
 
 using Genode::Attached_rom_dataspace;
 
-/* timer service */
-using Genode::Thread_deprecated;
-using Genode::Alarm_scheduler;
-using Genode::Alarm;
-
 typedef Genode::Synced_interface<TimeoutList<32, void> > Synced_timeout_list;
 
-class Alarm_thread : Thread_deprecated<4096>, public Alarm_scheduler
+class Timeouts
 {
 	private:
 
 		Timer::Connection    _timer;
-		Alarm::Time          _curr_time;   /* jiffies value */
 
 		Synced_motherboard  &_motherboard;
 		Synced_timeout_list &_timeouts;
 
-		/**
-		 * Thread entry function
-		 */
-		void entry()
+		Genode::Signal_handler<Timeouts> _timeout_sigh;
+
+		void check_timeouts()
 		{
-			while (true) {
-				unsigned long long now = _motherboard()->clock()->time();
-				unsigned nr;
+			timevalue const now = _motherboard()->clock()->time();
 
-				while ((nr = _timeouts()->trigger(now))) {
+			unsigned nr;
 
-					MessageTimeout msg(nr, _timeouts()->timeout());
+			while ((nr = _timeouts()->trigger(now))) {
 
-					if (_timeouts()->cancel(nr) < 0)
-						Logging::printf("Timeout not cancelled.\n");
+				MessageTimeout msg(nr, _timeouts()->timeout());
 
-					_motherboard()->bus_timeout.send(msg);
-				}
+				if (_timeouts()->cancel(nr) < 0)
+					Logging::printf("Timeout not cancelled.\n");
 
-				_timer.usleep(1000);
+				_motherboard()->bus_timeout.send(msg);
 			}
+
+
+			unsigned long long next = _timeouts()->timeout();
+
+			if (next == ~0ULL)
+				return;
+
+			timevalue rel_timeout_us = _motherboard()->clock()->delta(next, 1000 * 1000);
+			if (rel_timeout_us == 0)
+				rel_timeout_us = 1;
+
+			_timer.trigger_once(rel_timeout_us);
 		}
 
 	public:
 
+		void reprogram()
+		{
+			Genode::Signal_transmitter(_timeout_sigh).submit();
+		}
+
 		/**
 		 * Constructor
 		 */
-		Alarm_thread(Synced_motherboard &mb, Synced_timeout_list &timeouts)
-		: Thread_deprecated("alarm"), _curr_time(0), _motherboard(mb), _timeouts(timeouts)
-		{ start(); }
+		Timeouts(Genode::Env &env, Synced_motherboard &mb,
+		             Synced_timeout_list &timeouts)
+		:
+		  _motherboard(mb),
+		  _timeouts(timeouts),
+		  _timeout_sigh(env.ep(), *this, &Timeouts::check_timeouts)
+		{
+			_timer.sigh(_timeout_sigh);
+		}
 
-		Alarm::Time curr_time() { return _curr_time; }
-		unsigned long long curr_time_long() { return _motherboard()->clock()->time(); }
 };
 
 
@@ -870,7 +880,7 @@ class Machine : public StaticReceiver<Machine>
 		Synced_timeout_list    _timeouts;
 		Guest_memory          &_guest_memory;
 		Boot_module_provider  &_boot_modules;
-		Alarm_thread          *_alarm_thread;
+		Timeouts               _alarm_thread = { _env, _motherboard, _timeouts };
 		Genode::Pd_connection *_pd_vcpus = nullptr;
 
 		bool                   _alloc_fb_mem; /* For detecting FB alloc message */
@@ -1137,22 +1147,21 @@ class Machine : public StaticReceiver<Machine>
 				if (verbose_debug)
 					Logging::printf("TIMER_NEW\n");
 
-				if (_alarm_thread == NULL) {
-					Logging::printf("Creating alarm thread\n");
-					_alarm_thread = new Alarm_thread(_motherboard, _timeouts);
-				}
-
 				msg.nr = _timeouts()->alloc();
 
 				return true;
 
 			case MessageTimer::TIMER_REQUEST_TIMEOUT:
-
-				if (_timeouts()->request(msg.nr, msg.abstime) < 0)
+			{
+				int res = _timeouts()->request(msg.nr, msg.abstime);
+				if (res == 0)
+					_alarm_thread.reprogram();
+				else
+				if (res < 0)
 					Logging::printf("Could not program timeout.\n");
 
 				return true;
-
+			}
 			default:
 				return false;
 			};
@@ -1407,8 +1416,6 @@ class Machine : public StaticReceiver<Machine>
 		Synced_motherboard &motherboard() { return _motherboard; }
 
 		Motherboard &unsynchronized_motherboard() { return _unsynchronized_motherboard; }
-
-		Genode::Lock &motherboard_lock() { return _motherboard_lock; }
 };
 
 
