@@ -22,15 +22,16 @@ namespace Cli_monitor { struct Ram_command; }
 
 struct Cli_monitor::Ram_command : Command
 {
-	Child_registry       &_children;
+	Child_registry &_children;
+	Ram            &_ram;
 
 	Parameter _quota_param { "--quota", Parameter::NUMBER, "new RAM quota" };
 	Parameter _limit_param { "--limit", Parameter::NUMBER, "on-demand quota limit" };
 
-	Ram_command(Child_registry &children)
+	Ram_command(Child_registry &children, Ram &ram)
 	:
 		Command("ram", "set RAM quota of subsystem"),
-		_children(children)
+		_children(children), _ram(ram)
 	{
 		add_parameter(_quota_param);
 		add_parameter(_limit_param);
@@ -43,7 +44,7 @@ struct Cli_monitor::Ram_command : Command
 		if (new_quota > old_quota) {
 
 			size_t       amount = new_quota - old_quota;
-			size_t const avail  = Genode::env()->ram_session()->avail();
+			size_t const avail  = _ram.avail();
 			if (amount > avail) {
 				tprintf(terminal, "upgrade of '%s' exceeds available quota of ",
 				        child.name().string());

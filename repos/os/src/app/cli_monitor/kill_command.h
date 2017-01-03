@@ -24,18 +24,20 @@ struct Cli_monitor::Kill_command : Command
 {
 	Child_registry &_children;
 
+	Genode::Allocator &_alloc;
+
 	Parameter _kill_all_param { "--all", Parameter::VOID, "kill all subsystems" };
 
 	void _destroy_child(Child *child, Terminal::Session &terminal)
 	{
 		tprintf(terminal, "destroying subsystem '%s'\n", child->name().string());
 		_children.remove(child);
-		Genode::destroy(Genode::env()->heap(), child);
+		Genode::destroy(_alloc, child);
 	}
 
-	Kill_command(Child_registry &children)
+	Kill_command(Child_registry &children, Genode::Allocator &alloc)
 	:
-		Command("kill", "destroy subsystem"), _children(children)
+		Command("kill", "destroy subsystem"), _children(children), _alloc(alloc)
 	{
 		add_parameter(_kill_all_param);
 	}

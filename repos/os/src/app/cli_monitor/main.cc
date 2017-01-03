@@ -92,7 +92,7 @@ struct Cli_monitor::Main
 			next = child->next();
 			if (child->exited()) {
 				_children.remove(child);
-				Genode::destroy(Genode::env()->heap(), child);
+				Genode::destroy(_heap, child);
 			}
 		}
 	}
@@ -144,7 +144,7 @@ struct Cli_monitor::Main
 		                    .attribute_value("name", Genode::Number_of_bytes(0));
 	}
 
-	Ram _ram { _ram_preservation_from_config(),
+	Ram _ram { _env.ram(), _env.ram_session_cap(), _ram_preservation_from_config(),
 	           _yield_broadcast_handler, _yield_response_handler };
 
 	Heap _heap { _env.ram(), _env.rm() };
@@ -153,7 +153,7 @@ struct Cli_monitor::Main
 	Vfs::Dir_file_system _root_dir { _env, _heap, _vfs_config(),
 	                                 Vfs::global_file_system_factory() };
 
-	Subsystem_config_registry _subsystem_config_registry { _root_dir };
+	Subsystem_config_registry _subsystem_config_registry { _root_dir, _heap };
 
 	template <typename T>
 	struct Registered : T
@@ -165,8 +165,8 @@ struct Cli_monitor::Main
 
 	/* initialize generic commands */
 	Registered<Help_command>  _help_command    { _commands };
-	Registered<Kill_command>  _kill_command    { _commands, _children };
-	Registered<Start_command> _start_command   { _commands, _ram, _env.pd(),
+	Registered<Kill_command>  _kill_command    { _commands, _children, _heap };
+	Registered<Start_command> _start_command   { _commands, _ram, _heap, _env.pd(),
 	                                             _env.ram(), _env.ram_session_cap(),
 	                                             _env.rm(), _children,
 	                                             _subsystem_config_registry,
@@ -174,7 +174,7 @@ struct Cli_monitor::Main
 	                                             _child_exit_handler };
 	Registered<Status_command> _status_command { _commands, _ram, _children };
 	Registered<Yield_command>  _yield_command  { _commands, _children };
-	Registered<Ram_command>    _ram_command    { _commands, _children };
+	Registered<Ram_command>    _ram_command    { _commands, _children, _ram };
 
 	Main(Env &env) : _env(env)
 	{

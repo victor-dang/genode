@@ -32,6 +32,7 @@ class Cli_monitor::Start_command : public Command
 		typedef Genode::Dataspace_capability      Dataspace_capability;
 
 		Ram                           &_ram;
+		Genode::Allocator             &_alloc;
 		Child_registry                &_children;
 		Genode::Pd_session            &_pd;
 		Genode::Ram_session           &_ref_ram;
@@ -70,7 +71,7 @@ class Cli_monitor::Start_command : public Command
 
 			/* acount for cli_monitor local metadata */
 			size_t preserve_ram = 100*1024;
-			if (count * (ram + preserve_ram) > Genode::env()->ram_session()->avail()) {
+			if (count * (ram + preserve_ram) > _ram.avail()) {
 				tprintf(terminal, "Error: RAM quota exceeds available quota\n");
 				return;
 			}
@@ -111,7 +112,7 @@ class Cli_monitor::Start_command : public Command
 
 				Child *child = 0;
 				try {
-					child = new (Genode::env()->heap())
+					child = new (_alloc)
 						Child(_ram, label, binary_name, _pd, _ref_ram, _ref_ram_cap,
 						      _local_rm, ram, ram_limit,
 						      _yield_response_sigh_cap, _exit_sig_cap);
@@ -125,7 +126,7 @@ class Cli_monitor::Start_command : public Command
 					tprintf(terminal, "Error: insufficient memory, need ");
 					tprint_bytes(terminal, ram + Child::DONATED_RAM_QUOTA);
 					tprintf(terminal, ", have ");
-					tprint_bytes(terminal, Genode::env()->ram_session()->avail());
+					tprint_bytes(terminal, _ram.avail());
 					tprintf(terminal, "\n");
 					return;
 				}
@@ -158,6 +159,7 @@ class Cli_monitor::Start_command : public Command
 	public:
 
 		Start_command(Ram                           &ram,
+		              Genode::Allocator             &alloc,
 		              Genode::Pd_session            &pd,
 		              Genode::Ram_session           &ref_ram,
 		              Genode::Ram_session_capability ref_ram_cap,
@@ -168,7 +170,7 @@ class Cli_monitor::Start_command : public Command
 		              Signal_context_capability      exit_sig_cap)
 		:
 			Command("start", "create new subsystem"),
-			_ram(ram), _children(children), _pd(pd),
+			_ram(ram), _alloc(alloc), _children(children), _pd(pd),
 			_ref_ram(ref_ram), _ref_ram_cap(ref_ram_cap), _local_rm(local_rm),
 			_subsystem_configs(subsustem_configs),
 			_yield_response_sigh_cap(yield_response_sigh_cap),
