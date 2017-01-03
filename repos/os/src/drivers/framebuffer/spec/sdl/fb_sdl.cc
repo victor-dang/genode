@@ -6,24 +6,21 @@
  */
 
 /*
- * Copyright (C) 2006-2016 Genode Labs GmbH
+ * Copyright (C) 2006-2017 Genode Labs GmbH
  *
  * This file is part of the Genode OS framework, which is distributed
  * under the terms of the GNU General Public License version 2.
  */
 
+/* Genode includes */
+#include <base/attached_rom_dataspace.h>
+#include <base/component.h>
+#include <framebuffer_session/framebuffer_session.h>
+#include <input/root.h>
+#include <timer_session/connection.h>
+
 /* Linux includes */
 #include <SDL/SDL.h>
-
-/* Genode includes */
-#include <util/misc_math.h>
-#include <base/component.h>
-#include <base/rpc_server.h>
-#include <framebuffer_session/framebuffer_session.h>
-#include <cap_session/connection.h>
-#include <input/root.h>
-#include <os/config.h>
-#include <timer_session/connection.h>
 
 /* local includes */
 #include "input.h"
@@ -135,11 +132,11 @@ namespace Input {
  * Read integer value from config attribute
  */
 template<typename T>
-static T config_arg(char const *attr, T const &default_value)
+static T config_arg(Genode::Xml_node node, char const *attr, T const &default_value)
 {
 	long value = default_value;
 
-	try { Genode::config()->xml_node().attribute(attr).value(&value); }
+	try { node.attribute(attr).value(&value); }
 	catch (...) { }
 
 	return value;
@@ -155,8 +152,10 @@ struct Main
 
 	Genode::Env &env;
 
-	int fb_width  { config_arg("width",  1024) };
-	int fb_height { config_arg("height", 768) };
+	Genode::Attached_rom_dataspace config { env, "config" };
+
+	int fb_width  { config_arg(config.xml(), "width",  1024) };
+	int fb_height { config_arg(config.xml(), "height", 768) };
 
 	Framebuffer::Mode fb_mode { fb_width, fb_height, Framebuffer::Mode::RGB565 };
 
@@ -210,7 +209,7 @@ struct Main
 		env.parent().announce(env.ep().manage(fb_root));
 		env.parent().announce(env.ep().manage(input_root));
 
-		init_input_backend(input_handler_client);
+		init_input_backend(env, input_handler_client);
 	}
 };
 
