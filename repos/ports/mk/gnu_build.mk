@@ -109,7 +109,7 @@ CXXFLAGS += $(COMMON_CFLAGS_CXXFLAGS)
 # Unfortunately, the use of '--start-group' and '--end-group' does not suffice
 # in all cases because 'libtool' strips those arguments from the 'LIBS' variable.
 #
-LDLIBS_A  = $(filter %.a, $(sort $(LINK_ITEMS)) $(EXT_OBJECTS) $(LIBGCC))
+LDLIBS_A  = $(filter %.a, $(sort $(STATIC_LIBS)) $(EXT_OBJECTS) $(LIBGCC))
 LDLIBS_SO = $(addprefix $(PWD)/,$(sort $(SHARED_LIBS)))
 LDLIBS   += $(LDLIBS_A) $(LDLIBS_SO) $(LDLIBS_A)
 
