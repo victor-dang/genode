@@ -1525,7 +1525,9 @@ void Component::construct(Genode::Env &env)
 	static Machine machine(env, heap, boot_modules, guest_memory, colocate);
 
 	/* create console thread */
-	static Vancouver_console vcon(env, machine.motherboard(), fb_size, guest_memory.fb_ds());
+	static Seoul::Console vcon(env, machine.motherboard(),
+	                           machine.unsynchronized_motherboard(), fb_size,
+	                           guest_memory.fb_ds());
 
 	vcon.register_host_operations(machine.unsynchronized_motherboard());
 
