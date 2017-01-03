@@ -20,7 +20,10 @@
 /* local includes */
 #include <subsystem_config_registry.h>
 
-class Start_command : public Command
+namespace Cli_monitor { class Start_command; }
+
+
+class Cli_monitor::Start_command : public Command
 {
 	private:
 
@@ -147,6 +150,11 @@ class Start_command : public Command
 			}
 		}
 
+		Parameter _count_param     { "--count",     Parameter::NUMBER, "number of instances" };
+		Parameter _ram_param       { "--ram",       Parameter::NUMBER, "initial RAM quota" };
+		Parameter _ram_limit_param { "--ram-limit", Parameter::NUMBER, "limit for expanding RAM quota" };
+		Parameter _verbose_param   { "--verbose",   Parameter::VOID,   "show diagnostics" };
+
 	public:
 
 		Start_command(Ram                           &ram,
@@ -166,10 +174,10 @@ class Start_command : public Command
 			_yield_response_sigh_cap(yield_response_sigh_cap),
 			_exit_sig_cap(exit_sig_cap)
 		{
-			add_parameter(new Parameter("--count",     Parameter::NUMBER, "number of instances"));
-			add_parameter(new Parameter("--ram",       Parameter::NUMBER, "initial RAM quota"));
-			add_parameter(new Parameter("--ram-limit", Parameter::NUMBER, "limit for expanding RAM quota"));
-			add_parameter(new Parameter("--verbose",   Parameter::VOID,   "show diagnostics"));
+			add_parameter(_count_param);
+			add_parameter(_ram_param);
+			add_parameter(_ram_limit_param);
+			add_parameter(_verbose_param);
 		}
 
 		void _for_each_argument(Argument_fn const &fn) const override

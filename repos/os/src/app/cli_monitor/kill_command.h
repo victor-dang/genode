@@ -17,9 +17,14 @@
 /* local includes */
 #include <child_registry.h>
 
-struct Kill_command : Command
+namespace Cli_monitor { struct Kill_command; }
+
+
+struct Cli_monitor::Kill_command : Command
 {
 	Child_registry &_children;
+
+	Parameter _kill_all_param { "--all", Parameter::VOID, "kill all subsystems" };
 
 	void _destroy_child(Child *child, Terminal::Session &terminal)
 	{
@@ -30,10 +35,9 @@ struct Kill_command : Command
 
 	Kill_command(Child_registry &children)
 	:
-		Command("kill", "destroy subsystem"),
-		_children(children)
+		Command("kill", "destroy subsystem"), _children(children)
 	{
-		add_parameter(new Parameter("--all", Parameter::VOID, "kill all subsystems"));
+		add_parameter(_kill_all_param);
 	}
 
 	void _for_each_argument(Argument_fn const &fn) const override

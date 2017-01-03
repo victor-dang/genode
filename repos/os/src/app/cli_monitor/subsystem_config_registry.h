@@ -18,7 +18,10 @@
 #include <vfs/file_system.h>
 #include <vfs/vfs_handle.h>
 
-class Subsystem_config_registry
+namespace Cli_monitor { class Subsystem_config_registry; }
+
+
+class Cli_monitor::Subsystem_config_registry
 {
 	public:
 

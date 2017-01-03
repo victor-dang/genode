@@ -17,17 +17,23 @@
 /* local includes */
 #include <child_registry.h>
 
-struct Ram_command : Command
+namespace Cli_monitor { struct Ram_command; }
+
+
+struct Cli_monitor::Ram_command : Command
 {
 	Child_registry       &_children;
+
+	Parameter _quota_param { "--quota", Parameter::NUMBER, "new RAM quota" };
+	Parameter _limit_param { "--limit", Parameter::NUMBER, "on-demand quota limit" };
 
 	Ram_command(Child_registry &children)
 	:
 		Command("ram", "set RAM quota of subsystem"),
 		_children(children)
 	{
-		add_parameter(new Parameter("--quota", Parameter::NUMBER, "new RAM quota"));
-		add_parameter(new Parameter("--limit", Parameter::NUMBER, "on-demand quota limit"));
+		add_parameter(_quota_param);
+		add_parameter(_limit_param);
 	}
 
 	void _set_quota(Terminal::Session &terminal, Child &child, size_t const new_quota)

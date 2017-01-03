@@ -17,9 +17,12 @@
 /* local includes */
 #include <line_editor.h>
 
-/**
- * Initialize and register platform-specific commands
- */
-void init_extension(Command_registry &);
+namespace Cli_monitor {
+
+	/**
+	 * Initialize and register platform-specific commands
+	 */
+	void init_extension(Command_registry &);
+}
 
 #endif /* _EXTENSION_H_ */
