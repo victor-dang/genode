@@ -19,8 +19,9 @@
  * conditions of the GNU General Public License version 2.
  */
 
-/* Genode includes */
+/* base includes */
 #include <base/snprintf.h>
+#include <util/reconstructible.h>
 #include <util/register.h>
 
 /* nitpicker graphics backend */
@@ -33,7 +34,6 @@
 #include "console.h"
 #include "keyboard.h"
 
-using Genode::env;
 using Genode::Dataspace_client;
 using Genode::Surface;
 using Genode::Pixel_rgb565;
@@ -218,10 +218,10 @@ void Vancouver_console::entry()
 
 	static Input::Connection  input;
 	static Timer::Connection  timer;
-	Framebuffer::Connection  *framebuffer = 0;
+	Genode::Constructible<Framebuffer::Connection> framebuffer;
 
 	try {
-		framebuffer = new (env()->heap()) Framebuffer::Connection();
+		framebuffer.construct();
 	} catch (...) {
 		Genode::error("Headless mode - no framebuffer session available");
 		_startup_lock.unlock();
@@ -231,7 +231,7 @@ void Vancouver_console::entry()
 	_fb_size = Dataspace_client(framebuffer->dataspace()).size();
 	_fb_mode = framebuffer->mode();
 
-	_pixels = env()->rm_session()->attach(framebuffer->dataspace());
+	_pixels = _env.rm().attach(framebuffer->dataspace());
 
 	Surface<Pixel_rgb565> surface((Pixel_rgb565 *) _pixels,
 	                              Genode::Surface_base::Area(_fb_mode.width(),
@@ -290,8 +290,8 @@ void Vancouver_console::entry()
 
 						Genode::Lock::Guard guard(_console_lock);
 
-						env()->rm_session()->detach((void *)_guest_fb);
-						env()->rm_session()->attach_at(_fb_ds, (Genode::addr_t)_guest_fb);
+						_env.rm().detach((void *)_guest_fb);
+						_env.rm().attach_at(_fb_ds, (Genode::addr_t)_guest_fb);
 						unchanged = 0;
 						fb_active = false;
 
@@ -309,17 +309,17 @@ void Vancouver_console::entry()
 
 					Genode::Lock::Guard guard(_console_lock);
 
-					env()->rm_session()->detach((void *)_guest_fb);
-					env()->rm_session()->attach_at(framebuffer->dataspace(),
-					                               (Genode::addr_t)_guest_fb);
+					_env.rm().detach((void *)_guest_fb);
+					_env.rm().attach_at(framebuffer->dataspace(),
+					                    (Genode::addr_t)_guest_fb);
 
 					/* if the VGA model expects a larger FB, pad to that size. */
 					if (_fb_size < _vm_fb_size) {
 						Genode::Ram_dataspace_capability _backup =
-						  Genode::env()->ram_session()->alloc(_vm_fb_size-_fb_size);
+						  _env.ram().alloc(_vm_fb_size-_fb_size);
 
-						env()->rm_session()->attach_at(_backup,
-						                               (Genode::addr_t) (_guest_fb+_fb_size));
+						_env.rm().attach_at(_backup,
+						                    (Genode::addr_t) (_guest_fb+_fb_size));
 					}
 
 					revoked = true;
@@ -361,11 +361,13 @@ void Vancouver_console::register_host_operations(Motherboard &motherboard)
 }
 
 
-Vancouver_console::Vancouver_console(Synced_motherboard &mb,
+Vancouver_console::Vancouver_console(Genode::Env &env,
+                                     Synced_motherboard &mb,
                                      Genode::size_t vm_fb_size,
                                      Genode::Dataspace_capability fb_ds)
 :
 	Thread_deprecated("vmm_console"),
+	_env(env),
 	_startup_lock(Genode::Lock::LOCKED),
 	_motherboard(mb), _pixels(0), _guest_fb(0), _fb_size(0),
 	_fb_ds(fb_ds), _vm_fb_size(vm_fb_size), _regs(0),

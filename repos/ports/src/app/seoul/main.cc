@@ -18,7 +18,7 @@
  */
 
 /*
- * Copyright (C) 2011-2013 Genode Labs GmbH
+ * Copyright (C) 2011-2017 Genode Labs GmbH
  * Copyright (C) 2012 Intel Corporation
  *
  * This file is distributed under the terms of the GNU General Public License
@@ -31,19 +31,22 @@
  * conditions of the GNU General Public License version 2.
  */
 
-/* Genode includes */
-#include <base/component.h>
-#include <util/touch.h>
-#include <base/rpc_server.h>
-#include <util/misc_math.h>
-#include <rom_session/connection.h>
-#include <rm_session/connection.h>
+/* base includes */
 #include <base/allocator_avl.h>
+#include <base/attached_rom_dataspace.h>
+#include <base/component.h>
+#include <base/heap.h>
+#include <base/rpc_server.h>
+#include <base/synced_interface.h>
+#include <rm_session/connection.h>
+#include <rom_session/connection.h>
+#include <util/touch.h>
+#include <util/misc_math.h>
+
+/* os includes */
 #include <nic_session/connection.h>
 #include <nic/packet_allocator.h>
-#include <os/config.h>
 #include <os/alarm.h>
-#include <base/synced_interface.h>
 #include <timer_session/connection.h>
 #include <rtc_session/connection.h>
 
@@ -87,6 +90,8 @@ Genode::Lock *utcb_lock()
 	return &inst;
 }
 
+
+using Genode::Attached_rom_dataspace;
 
 /* timer service */
 using Genode::Thread_deprecated;
@@ -160,8 +165,9 @@ class Guest_memory
 {
 	private:
 
-		Genode::Ram_dataspace_capability _ds;
-		Genode::Ram_dataspace_capability _fb_ds;
+		Genode::Env                      &_env;
+		Genode::Ram_dataspace_capability  _ds;
+		Genode::Ram_dataspace_capability  _fb_ds;
 
 		Genode::size_t _backing_store_size;
 		Genode::size_t _fb_size;
@@ -192,10 +198,12 @@ class Guest_memory
 		 *                            used as guest-physical and device memory,
 		 *                            allocated from core's RAM service
 		 */
-		Guest_memory(Genode::size_t backing_store_size, Genode::size_t fb_size)
+		Guest_memory(Genode::Env &env, Genode::size_t backing_store_size,
+		             Genode::size_t fb_size)
 		:
-			_ds(Genode::env()->ram_session()->alloc(backing_store_size-fb_size)),
-			_fb_ds(Genode::env()->ram_session()->alloc(fb_size)),
+			_env(env),
+			_ds(env.ram().alloc(backing_store_size-fb_size)),
+			_fb_ds(env.ram().alloc(fb_size)),
 			_backing_store_size(backing_store_size),
 			_fb_size(fb_size),
 			_local_addr(0),
@@ -206,8 +214,8 @@ class Guest_memory
 				/*
 				 * RAM used as backing store for guest-physical memory
 				 */
-				_local_addr = Genode::env()->rm_session()->attach(_ds);
-				_fb_addr = Genode::env()->rm_session()->attach_at(_fb_ds,
+				_local_addr = env.rm().attach(_ds);
+				_fb_addr = env.rm().attach_at(_fb_ds,
 				        ((Genode::addr_t) _local_addr)+backing_store_size-fb_size);
 
 			} catch (Genode::Rm_session::Region_conflict) {
@@ -218,11 +226,11 @@ class Guest_memory
 		~Guest_memory()
 		{
 			/* detach and free backing store */
-			Genode::env()->rm_session()->detach((void *)_local_addr);
-			Genode::env()->ram_session()->free(_ds);
+			_env.rm().detach((void *)_local_addr);
+			_env.ram().free(_ds);
 
-			Genode::env()->rm_session()->detach((void *)_fb_addr);
-			Genode::env()->ram_session()->free(_fb_ds);
+			_env.rm().detach((void *)_fb_addr);
+			_env.ram().free(_fb_ds);
 		}
 
 		/**
@@ -849,8 +857,9 @@ class Machine : public StaticReceiver<Machine>
 {
 	private:
 
-		Genode::Env           &_env;;
-		Genode::Rom_connection _hip_rom;
+		Genode::Env           &_env;
+		Genode::Heap          &_heap;
+		Attached_rom_dataspace _hip_rom = { _env, "hypervisor_info_page" };
 		Hip * const            _hip;
 		Clock                  _clock;
 		Genode::Lock           _motherboard_lock;
@@ -944,7 +953,7 @@ class Machine : public StaticReceiver<Machine>
 					_vcpus_up ++;
 
 					long const prio = Genode::Cpu_session::PRIORITY_LIMIT / 16;
-					static Genode::Cpu_connection * cpu_session = new (Genode::env()->heap()) Genode::Cpu_connection("Seoul vCPUs", prio);
+					static Genode::Cpu_connection * cpu_session = new (_heap) Genode::Cpu_connection("Seoul vCPUs", prio);
 					Genode::Affinity::Space cpu_space = cpu_session->affinity_space();
 					Genode::Affinity::Location location = cpu_space.location_of_index(_vcpus_up);
 
@@ -1020,7 +1029,8 @@ class Machine : public StaticReceiver<Machine>
 					 */
 					Genode::size_t data_len = 0;
 					try {
-						data_len = _boot_modules.data(index, data_dst, dst_len);
+						data_len = _boot_modules.data(_env.rm(), index,
+						                              data_dst, dst_len);
 					} catch (Boot_module_provider::Destination_buffer_too_small) {
 						Logging::panic("could not load module, destination buffer too small\n");
 						return false;
@@ -1069,11 +1079,11 @@ class Machine : public StaticReceiver<Machine>
 				}
 			case MessageHostOp::OP_GET_MAC:
 				{
-					Nic::Packet_allocator *tx_block_alloc =
-						new (Genode::env()->heap()) Nic::Packet_allocator(Genode::env()->heap());
+					typedef Nic::Packet_allocator Palloc;
+					Palloc *tx_block_alloc = new (_heap) Palloc(&_heap);
 
 					enum {
-						PACKET_SIZE = Nic::Packet_allocator::DEFAULT_PACKET_SIZE,
+						PACKET_SIZE = Palloc::DEFAULT_PACKET_SIZE,
 						BUF_SIZE    = Nic::Session::QUEUE_SIZE * PACKET_SIZE,
 					};
 
@@ -1107,7 +1117,7 @@ class Machine : public StaticReceiver<Machine>
 				}
 			default:
 
-				PWRN("HostOp %d not implemented", msg.type);
+				Logging::printf("HostOp %d not implemented\n", msg.type);
 				return false;
 			}
 		}
@@ -1251,12 +1261,12 @@ class Machine : public StaticReceiver<Machine>
 		/**
 		 * Constructor
 		 */
-		Machine(Genode::Env &env, Boot_module_provider &boot_modules,
+		Machine(Genode::Env &env, Genode::Heap &heap,
+		        Boot_module_provider &boot_modules,
 		        Guest_memory &guest_memory, bool colocate)
 		:
-			_env(env),
-			_hip_rom(_env, "hypervisor_info_page"),
-			_hip(Genode::env()->rm_session()->attach(_hip_rom.dataspace())),
+			_env(env), _heap(heap),
+			_hip(_hip_rom.local_addr<Hip>()),
 			_clock(_hip->tsc_freq*1000),
 			_motherboard_lock(Genode::Lock::LOCKED),
 			_unsynchronized_motherboard(&_clock, _hip),
@@ -1307,11 +1317,12 @@ class Machine : public StaticReceiver<Machine>
 				char name[MODEL_NAME_MAX_LEN];
 				node.type_name(name, sizeof(name));
 
-				PINF("device: %s", name);
+				Genode::log("device: ", (char const *)name);
 				Device_model_info *dmi = device_model_registry()->lookup(name);
 
 				if (!dmi) {
-					PERR("configuration error: device model '%s' does not exist", name);
+					Genode::error("configuration error: device model '",
+					              (char const *)name, "' does not exist");
 					throw Config_error();
 				}
 
@@ -1330,7 +1341,7 @@ class Machine : public StaticReceiver<Machine>
 						Xml_node::Attribute arg = node.attribute(dmi->arg_names[i]);
 						arg.value(&argv[i]);
 
-						PINF(" arg[%d]: 0x%x", i, (int)argv[i]);
+						Genode::log(" arg[", i, "]: ", Genode::Hex(argv[i]));
 					}
 					catch (Xml_node::Nonexistent_attribute) { }
 				}
@@ -1353,9 +1364,10 @@ class Machine : public StaticReceiver<Machine>
 		 */
 		void boot()
 		{
-			PINF("VM and VMM are %s. VM is starting with %u %s.",
-			     _colocate_vm_vmm ? "co-located" : "not co-located",
-			     _vcpus_up,  _vcpus_up > 1 ? "vCPUs" : "vCPU");
+			Genode::log("VM and VMM are ",
+			            _colocate_vm_vmm ? "co-located" : "not co-located",
+			            ". VM is starting with ", _vcpus_up, " vCPU",
+			            _vcpus_up > 1 ? "s" : "");
 
 			/* init VCPUs */
 			for (VCpu *vcpu = _unsynchronized_motherboard.last_vcpu; vcpu; vcpu = vcpu->get_last()) {
@@ -1397,23 +1409,21 @@ class Machine : public StaticReceiver<Machine>
 		Motherboard &unsynchronized_motherboard() { return _unsynchronized_motherboard; }
 
 		Genode::Lock &motherboard_lock() { return _motherboard_lock; }
-
-		~Machine()
-		{
-			Genode::env()->rm_session()->detach(_hip);
-		}
 };
 
 
 extern unsigned long _prog_img_beg;  /* begin of program image (link address) */
 extern unsigned long _prog_img_end;  /* end of program image */
 
+extern void heap_init_env(Genode::Heap *);
 
 void Component::construct(Genode::Env &env)
 {
 	Genode::addr_t fb_size = 4*1024*1024;
 	Genode::addr_t vm_size;
 	unsigned       colocate = 1; /* by default co-locate VM and VMM in same PD */
+
+	static Attached_rom_dataspace config(env, "config");
 
 	{
 		/*
@@ -1426,10 +1436,10 @@ void Component::construct(Genode::Env &env)
 		Vmm::Virtual_reservation
 			reservation(Genode::Thread::stack_area_virtual_base());
 
-		Genode::printf("--- Vancouver VMM starting ---\n");
+		Genode::log("--- Vancouver VMM starting ---");
 
 		/* request max available memory */
-		vm_size = Genode::env()->ram_session()->avail();
+		vm_size = env.ram().avail();
 		/* reserve some memory for the VMM */
 		vm_size -= 8 * 1024 * 1024;
 		/* calculate max memory for the VM */
@@ -1437,7 +1447,7 @@ void Component::construct(Genode::Env &env)
 
 		/* Find out framebuffer size (default: 4 MiB) */
 		try {
-			Genode::Xml_node node = Genode::config()->xml_node().sub_node("machine").sub_node("vga");
+			Genode::Xml_node node = config.xml().sub_node("machine").sub_node("vga");
 			Genode::Xml_node::Attribute arg = node.attribute("fb_size");
 
 			unsigned long val = 0;
@@ -1447,7 +1457,7 @@ void Component::construct(Genode::Env &env)
 
 		/* read out whether VM and VMM should be colocated or not */
 		try {
-			Genode::config()->xml_node().attribute("colocate").value(&colocate);
+			config.xml().attribute("colocate").value(&colocate);
 		} catch (...) { }
 	}
 
@@ -1456,67 +1466,72 @@ void Component::construct(Genode::Env &env)
 		static Vmm::Virtual_reservation reservation(vm_size);
 
 	/* setup guest memory */
-	static Guest_memory guest_memory(vm_size, fb_size);
+	static Guest_memory guest_memory(env, vm_size, fb_size);
+
+	typedef Genode::Hex_range<unsigned long> Hex_range;
 
 	/* diagnostic messages */
 	if (colocate)
-		Genode::printf("[0x%012lx, 0x%012lx) - %lu MiB - VM accessible "
-		               "memory\n", 0UL, vm_size, vm_size / 1024 / 1024);
+		Genode::log(Hex_range(0UL, vm_size), " - ", vm_size / 1024 / 1024,
+		            " MiB - VM accessible memory");
 
 	if (guest_memory.backing_store_local_base())
-		Genode::printf("[0x%12p, 0x%12p) - %lu MiB - VMM accessible shadow "
-		               "mapping of VM memory \n",
-		               guest_memory.backing_store_local_base(),
-		               guest_memory.backing_store_local_base() +
-		               guest_memory.remaining_size, vm_size / 1024 / 1024);
+		Genode::log(Hex_range((unsigned long)guest_memory.backing_store_local_base(),
+		                      guest_memory.remaining_size),
+		            " - ", vm_size / 1024 / 1024, " MiB",
+		            " - VMM accessible shadow mapping of VM memory"); 
 
 	if (guest_memory.backing_store_fb_local_base())
-		Genode::printf("[0x%12p, 0x%12p) - %lu MiB - VMM accessible "
-		               "framebuffer memory of VM\n",
-		               guest_memory.backing_store_fb_local_base(),
-		               guest_memory.backing_store_fb_local_base() + fb_size,
-		               fb_size / 1024 / 1024);
+		Genode::log(Hex_range((unsigned long)guest_memory.backing_store_fb_local_base(),
+		                      fb_size),
+		            " - ", fb_size / 1024 / 1024, " MiB"
+		            " - VMM accessible framebuffer memory of VM");
 
-	Genode::printf("[0x%012lx, 0x%012lx) - Genode stack area\n",
-	                Genode::Thread::stack_area_virtual_base(),
-	                Genode::Thread::stack_area_virtual_base() +
-	                Genode::Thread::stack_area_virtual_size());
+	Genode::log(Hex_range(Genode::Thread::stack_area_virtual_base(),
+	                      Genode::Thread::stack_area_virtual_size()),
+	            " - Genode stack area");
 
-	Genode::printf("[0x%012lx, 0x%012lx) - VMM program image\n",
-	               (Genode::addr_t)&_prog_img_beg,
-	               (Genode::addr_t)&_prog_img_end);
+	Genode::log(Hex_range((Genode::addr_t)&_prog_img_beg,
+	                      (Genode::addr_t)&_prog_img_end -
+	                      (Genode::addr_t)&_prog_img_beg),
+	            " - VMM program image");
 
 	if (!guest_memory.backing_store_local_base() ||
 		!guest_memory.backing_store_fb_local_base()) {
-		PERR("Not enough space left for %s - exit",
-		     guest_memory.backing_store_local_base() ? "framebuffer" : "VMM");
+		Genode::error("Not enough space left for ",
+		              guest_memory.backing_store_local_base() ? "framebuffer"
+		                                                      : "VMM");
 		env.parent().exit(-1);
 		return;
 	}
 
-	Genode::printf("\n--- Setup VM ---\n");
+	Genode::log("\n--- Setup VM ---");
+
+	static Genode::Heap heap(env.ram(), env.rm());
+
+	heap_init_env(&heap);
 
 	static Boot_module_provider
-		boot_modules(Genode::config()->xml_node().sub_node("multiboot"));
+		boot_modules(config.xml().sub_node("multiboot"));
 
 	/* create the PC machine based on the configuration given */
-	static Machine machine(env, boot_modules, guest_memory, colocate);
+	static Machine machine(env, heap, boot_modules, guest_memory, colocate);
 
 	/* create console thread */
-	static Vancouver_console vcon(machine.motherboard(), fb_size, guest_memory.fb_ds());
+	static Vancouver_console vcon(env, machine.motherboard(), fb_size, guest_memory.fb_ds());
 
 	vcon.register_host_operations(machine.unsynchronized_motherboard());
 
 	/* create disk thread */
-	static Vancouver_disk vdisk(machine.motherboard(),
-	                            guest_memory.backing_store_local_base(),
-	                            guest_memory.backing_store_size());
+	static Seoul::Disk vdisk(env, machine.motherboard(),
+	                         guest_memory.backing_store_local_base(),
+	                         guest_memory.backing_store_size());
 
 	vdisk.register_host_operations(machine.unsynchronized_motherboard());
 
-	machine.setup_devices(Genode::config()->xml_node().sub_node("machine"));
+	machine.setup_devices(config.xml().sub_node("machine"));
 
-	Genode::printf("\n--- Booting VM ---\n");
+	Genode::log("\n--- Booting VM ---");
 
 	machine.boot();
 }

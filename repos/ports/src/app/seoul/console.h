@@ -43,6 +43,7 @@ class Vancouver_console : public Thread_deprecated<8192>, public StaticReceiver<
 {
 	private:
 
+		Genode::Env                 &_env;
 		Genode::Lock                 _startup_lock;
 		Synced_motherboard          &_motherboard;
 		Genode::Lock                 _console_lock;
@@ -71,7 +72,8 @@ class Vancouver_console : public Thread_deprecated<8192>, public StaticReceiver<
 		/**
 		 * Constructor
 		 */
-		Vancouver_console(Synced_motherboard &,
+		Vancouver_console(Genode::Env &env,
+		                  Synced_motherboard &,
 		                  Genode::size_t vm_fb_size,
 		                  Genode::Dataspace_capability fb_ds);
 };
