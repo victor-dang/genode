@@ -83,8 +83,11 @@ class Framebuffer::Session_component
 			_ds(_env.ram().alloc(_size, WRITE_COMBINED)),
 			_phys_base(Dataspace_client(_ds).phys_addr())
 		{
-			/* kick-off driver initialization */
-			driver.init(width, height, _format, _phys_base);
+			if (driver.init(width, height, _format, _phys_base)) {
+				error("could not initialize display");
+				struct Could_not_initialize_display : Exception { };
+				throw Could_not_initialize_display();
+			}
 		}
 
 		/************************************
