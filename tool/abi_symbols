@@ -32,7 +32,7 @@ foreach line [split $symbols "\n"] {
 	regexp {^(\w+) U\s*$} $line dummy name
 
 	# match defined symbol, which does not always feature a size value
-	regexp {^(\w+) (\w) \w+ ?(\w*)$} $line dummy name type size_hex
+	regexp {^([\w.]+) (\w) \w+ ?(\w*)$} $line dummy name type size_hex
 
 	# decimal symbol size
 	set size_dec [expr 0x0$size_hex]
