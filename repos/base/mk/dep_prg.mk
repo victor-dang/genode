@@ -78,7 +78,7 @@ endif
 # if the target does not depend on any library with unsatisfied build
 # requirements. In such a case, the target cannot be linked anyway.
 #
-	@(echo "ifeq (\$$(filter \$$(DEP_A_$(TARGET).prg:.lib.a=) \$$(DEP_SO_$(TARGET).prg:.lib.so=),\$$(INVALID_DEPS)),)"; \
+	@(echo "ifeq (\$$(filter \$$(DEP_A_$(TARGET).prg:.lib.a=) \$$(DEP_SO_$(TARGET).prg:.lib.so=) $(LIBS),\$$(INVALID_DEPS)),)"; \
 	  echo "all: $(TARGET).prg"; \
 	  echo "endif") >> $(LIB_DEP_FILE)
 #
