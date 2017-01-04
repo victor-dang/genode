@@ -46,8 +46,8 @@ namespace Init {
 
 	static void warn_insuff_quota(size_t const avail)
 	{
-		log("Warning: Specified quota exceeds available quota.");
-		log("         Proceeding with a quota of ", avail, ".");
+		warning("specified quota exceeds available quota, "
+		        "proceeding with a quota of ", avail);
 	}
 
 	inline long read_priority(Xml_node start_node, long prio_levels)
@@ -388,11 +388,12 @@ class Init::Child : Child_policy, Child_service::Wakeup
 
 		struct Read_quota
 		{
-			Read_quota(Xml_node     start_node,
-			           size_t      &ram_quota,
-			           size_t      &cpu_quota_pc,
-			           bool        &constrain_phys,
-			           size_t const ram_avail)
+			Read_quota(Xml_node       start_node,
+			           size_t        &ram_quota,
+			           size_t        &cpu_quota_pc,
+			           bool          &constrain_phys,
+			           size_t  const  ram_avail,
+			           Verbose const &verbose)
 			{
 				cpu_quota_pc   = 0;
 				constrain_phys = false;
@@ -421,7 +422,9 @@ class Init::Child : Child_policy, Child_service::Wakeup
 				 */
 				if (ram_quota > ram_avail) {
 					ram_quota = ram_avail;
-					warn_insuff_quota(ram_avail);
+
+					if (verbose.enabled())
+						warn_insuff_quota(ram_avail);
 				}
 			}
 		};
@@ -441,9 +444,11 @@ class Init::Child : Child_policy, Child_service::Wakeup
 			Resources(Xml_node start_node, const char *label,
 			          long prio_levels,
 			          Affinity::Space const &affinity_space,
-			          size_t ram_avail)
+			          size_t ram_avail,
+			          Verbose const &verbose)
 			:
-				Read_quota(start_node, ram_quota, cpu_quota_pc, constrain_phys, ram_avail),
+				Read_quota(start_node, ram_quota, cpu_quota_pc,
+				           constrain_phys, ram_avail, verbose),
 				prio_levels_log2(log2(prio_levels)),
 				priority(read_priority(start_node, prio_levels)),
 				affinity(affinity_space,
@@ -515,7 +520,8 @@ class Init::Child : Child_policy, Child_service::Wakeup
 			_name_registry(name_registry),
 			_name(start_node, name_registry),
 			_resources(start_node, _name.unique, prio_levels,
-			           affinity_space, _env.ram().avail()),
+			           affinity_space, avail_slack_ram_quota(_env.ram().avail()),
+			           _verbose),
 			_parent_services(parent_services),
 			_child_services(child_services),
 			_config(_env.ram(), _env.rm(), start_node),
