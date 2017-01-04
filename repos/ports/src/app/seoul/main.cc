@@ -860,8 +860,6 @@ class Vcpu_dispatcher : public Vcpu_handler,
 };
 
 
-const void * _forward_pkt;
-
 
 class Machine : public StaticReceiver<Machine>
 {
@@ -881,14 +879,13 @@ class Machine : public StaticReceiver<Machine>
 		Guest_memory          &_guest_memory;
 		Boot_module_provider  &_boot_modules;
 		Timeouts               _alarm_thread = { _env, _motherboard, _timeouts };
-		Genode::Pd_connection *_pd_vcpus = nullptr;
-
-		bool                   _alloc_fb_mem; /* For detecting FB alloc message */
 		bool                   _colocate_vm_vmm;
-		unsigned short         _vcpus_up;
+		unsigned short         _vcpus_up = 0;
 
-		Nic::Session          *_nic;
-		Rtc::Session          *_rtc;
+		bool                   _alloc_fb_mem = false; /* For detecting FB alloc message */
+		Genode::Pd_connection *_pd_vcpus     = nullptr;
+		Seoul::Network        *_nic          = nullptr;
+		Rtc::Session          *_rtc          = nullptr;
 
 	public:
 
@@ -1089,39 +1086,31 @@ class Machine : public StaticReceiver<Machine>
 				}
 			case MessageHostOp::OP_GET_MAC:
 				{
-					typedef Nic::Packet_allocator Palloc;
-					Palloc *tx_block_alloc = new (_heap) Palloc(&_heap);
-
-					enum {
-						PACKET_SIZE = Palloc::DEFAULT_PACKET_SIZE,
-						BUF_SIZE    = Nic::Session::QUEUE_SIZE * PACKET_SIZE,
-					};
-
-					try {
-						_nic = new Nic::Connection(tx_block_alloc, BUF_SIZE, BUF_SIZE);
-					} catch (...) {
-						Logging::printf("No NIC connection possible!\n");
+					if (_nic) {
+						Logging::printf("Solely one network connection supported\n");
 						return false;
 					}
 
-					Logging::printf("Our mac address is %2x:%2x:%2x:%2x:%2x:%2x\n",
-					        _nic->mac_address().addr[0],
-					        _nic->mac_address().addr[1],
-					        _nic->mac_address().addr[2],
-					        _nic->mac_address().addr[3],
-					        _nic->mac_address().addr[4],
-					        _nic->mac_address().addr[5]
-					);
-					msg.mac = ((Genode::uint64_t)_nic->mac_address().addr[0] & 0xff) << 40 |
-					          ((Genode::uint64_t)_nic->mac_address().addr[1] & 0xff) << 32 |
-					          ((Genode::uint64_t)_nic->mac_address().addr[2] & 0xff) << 24 |
-					          ((Genode::uint64_t)_nic->mac_address().addr[3] & 0xff) << 16 |
-					          ((Genode::uint64_t)_nic->mac_address().addr[4] & 0xff) << 8 |
-					          ((Genode::uint64_t)_nic->mac_address().addr[5] & 0xff);
+					try {
+						_nic = new (_heap) Seoul::Network(_env.ep(), _heap,
+						                                  _motherboard);
+					} catch (...) {
+						Logging::printf("Creating network connection failed\n");
+						return false;
+					}
 
-					/* start receiver thread for this MAC */
-					Vancouver_network * netreceiver = new Vancouver_network(_motherboard, _nic);
-					assert(netreceiver);
+					Nic::Mac_address mac = _nic->mac_address();
+
+					Logging::printf("Mac address: %2x:%2x:%2x:%2x:%2x:%2x\n",
+					                mac.addr[0], mac.addr[1], mac.addr[2],
+					                mac.addr[3], mac.addr[4], mac.addr[5]);
+
+					msg.mac = ((Genode::uint64_t)mac.addr[0] & 0xff) << 40 |
+					          ((Genode::uint64_t)mac.addr[1] & 0xff) << 32 |
+					          ((Genode::uint64_t)mac.addr[2] & 0xff) << 24 |
+					          ((Genode::uint64_t)mac.addr[3] & 0xff) << 16 |
+					          ((Genode::uint64_t)mac.addr[4] & 0xff) <<  8 |
+					          ((Genode::uint64_t)mac.addr[5] & 0xff);
 
 					return true;
 				}
@@ -1204,44 +1193,14 @@ class Machine : public StaticReceiver<Machine>
 		{
 			if (msg.type != MessageNetwork::PACKET) return false;
 
+			if (!_nic)
+				return false;
+
 			Genode::Lock::Guard guard(*utcb_lock());
 
 			Vmm::Utcb_guard utcb_guard(utcb_backup);
 
-			if (msg.buffer == _forward_pkt) {
-				/* don't end in an endless forwarding loop */
-				return false;
-			}
-
-			/* allocate transmit packet */
-			Nic::Packet_descriptor tx_packet;
-			try {
-				tx_packet = _nic->tx()->alloc_packet(msg.len);
-			} catch (Nic::Session::Tx::Source::Packet_alloc_failed) {
-				Logging::printf("error: tx packet alloc failed\n");
-				return false;
-			}
-
-			/* fill packet with content */
-			char *tx_content = _nic->tx()->packet_content(tx_packet);
-			_forward_pkt = tx_content;
-			for (unsigned i = 0; i < msg.len; i++) {
-				tx_content[i] = msg.buffer[i];
-			}
-			_nic->tx()->submit_packet(tx_packet);
-
-			/* wait for acknowledgement */
-			Nic::Packet_descriptor ack_tx_packet = _nic->tx()->get_acked_packet();
-
-			if (ack_tx_packet.size()   != tx_packet.size()
-			 || ack_tx_packet.offset() != tx_packet.offset()) {
-				Logging::printf("error: unexpected acked packet\n");
-			}
-
-			/* release sent packet to free the space in the tx communication buffer */
-			_nic->tx()->release_packet(tx_packet);
-
-			return true;
+			return _nic->transmit(msg.buffer, msg.len);
 		}
 
 		bool receive(MessagePciConfig &msg)
@@ -1283,8 +1242,7 @@ class Machine : public StaticReceiver<Machine>
 			_timeouts(_timeouts_lock, &_unsynchronized_timeouts),
 			_guest_memory(guest_memory),
 			_boot_modules(boot_modules),
-			_colocate_vm_vmm(colocate),
-			_vcpus_up(0)
+			_colocate_vm_vmm(colocate)
 		{
 			_timeouts()->init();
 
