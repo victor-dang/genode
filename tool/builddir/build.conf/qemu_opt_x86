@@ -4,7 +4,7 @@
 ##
 
 # enable GDB stub
-QEMU_OPT += -s
+#QEMU_OPT += -s
 
 # prevent Qemu from using KVM
 QEMU_OPT += -no-kvm
