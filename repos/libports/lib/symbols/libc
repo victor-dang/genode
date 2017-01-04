@@ -3,10 +3,12 @@ ___tolower T
 ___toupper T
 __assert T
 __error T
+__flt_rounds T
+__inet_addr T
 __inet_aton T
+__inet_nsap_ntoa T
 __inet_ntoa T
 __inet_ntop T
-__inet_nsap_ntoa T
 __inet_pton T
 __isthreaded B
 __mb_cur_max D 8
@@ -897,10 +899,18 @@ __isinfl T
 #
 # Symbols needed by libc-resolv
 #
+__inet_nsap_addr T
+_accept T
+_bind T
 _close T
 _connect T
+_fcntl T
+_fstat T
 _getpeername T
 _getsockname T
+_getsockopt T
+_listen T
+_nanosleep W
 _pthread_getspecific W
 _pthread_key_create W
 _pthread_main_np W
@@ -913,9 +923,12 @@ _pthread_rwlock_wrlock W
 _pthread_setspecific W
 _read T
 _recvfrom T
+_select W
 _sendto T
 _setsockopt T
+_sigprocmask W
 _socket T
+_write T
 _writev T
 
 
