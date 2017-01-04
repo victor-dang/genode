@@ -24,8 +24,6 @@
 
 /* Genode includes */
 #include <base/allocator_avl.h>
-#include <base/printf.h>
-#include <base/thread.h>
 #include <block_session/connection.h>
 #include <util/string.h>
 #include <base/synced_allocator.h>
@@ -38,27 +36,31 @@ namespace Seoul {
 	class Disk_signal;
 }
 
-class Seoul::Disk_signal : public Genode::Signal_dispatcher<Seoul::Disk>
+class Seoul::Disk_signal
 {
 	private:
 
-		unsigned _disk_nr;
+		Disk     &_obj;
+		unsigned  _id;
+
+		void _signal();
 
 	public:
 
-		Disk_signal(Genode::Signal_receiver &sig_rec, Disk &obj,
-		                      void (Disk::*member)(unsigned),
-		                      unsigned disk_nr)
-		: Genode::Signal_dispatcher<Disk>(sig_rec, obj, member),
-		  _disk_nr(disk_nr) {}
+		Genode::Signal_handler<Disk_signal> const sigh;
 
-		unsigned disk_nr() { return _disk_nr; }
+		Disk_signal(Genode::Entrypoint &ep, Disk &obj, unsigned disk_nr)
+		:
+		  _obj(obj), _id(disk_nr), sigh(ep, *this, &Disk_signal::_signal)
+		{ }
 };
 
 
-class Seoul::Disk : public Genode::Thread_deprecated<8192>, public StaticReceiver<Seoul::Disk>
+class Seoul::Disk : public StaticReceiver<Seoul::Disk>
 {
 	private:
+
+		Genode::Env &_env;
 
 		/* helper class to lookup a MessageDisk object */
 		class Avl_entry : public Genode::Avl_node<Avl_entry>
@@ -93,7 +95,7 @@ class Seoul::Disk : public Genode::Thread_deprecated<8192>, public StaticReceive
 			Block::Session::Operations  ops;
 			Genode::size_t              blk_size;
 			Block::sector_t             blk_cnt;
-			Disk_signal                *dispatcher;
+			Disk_signal                *signal;
 		} _diskcon[MAX_DISKS];
 
 		Synced_motherboard &_motherboard;
@@ -115,21 +117,17 @@ class Seoul::Disk : public Genode::Thread_deprecated<8192>, public StaticReceive
 		Genode::Avl_tree<Avl_entry> _lookup_msg;
 		Genode::Lock           _lookup_msg_lock;
 
-		/* entry function if signal must be dispatched */
-		void _signal_dispatch_entry(unsigned);
-
 	public:
 
 		/**
 		 * Constructor
 		 */
-		Disk(Genode::Env &, Synced_motherboard &,
-		               char * backing_store_base,
-		               Genode::size_t backing_store_size);
+		Disk(Genode::Env &, Synced_motherboard &, char * backing_store_base,
+		     Genode::size_t backing_store_size);
 
 		~Disk();
 
-		void entry();
+		void handle_disk(unsigned);
 
 		bool receive(MessageDisk &msg);
 
