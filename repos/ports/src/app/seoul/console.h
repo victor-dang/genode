@@ -53,7 +53,7 @@ class Seoul::Console : public StaticReceiver<Seoul::Console>
 		Genode::Constructible<Framebuffer::Connection> _framebuffer;
 		Genode::Constructible<Genode::Surface<Genode::Pixel_rgb565> > _surface;
 		Input::Connection            _input;
-		Vancouver_keyboard           _vkeyb = { _motherboard };
+		Keyboard                     _vkeyb = { _motherboard };
 		short                       *_pixels   = nullptr;
 		char                        *_guest_fb = nullptr;
 		unsigned long                _fb_size  = 0;
