@@ -17,8 +17,8 @@
 #include <input/event.h>
 #include <input/keycodes.h>
 #include <input_session/connection.h>
-#include <os/attached_dataspace.h>
-#include <os/attached_rom_dataspace.h>
+#include <base/attached_dataspace.h>
+#include <base/attached_rom_dataspace.h>
 #include <os/reporter.h>
 #include <report_session/connection.h>
 #include <timer_session/connection.h>
@@ -31,7 +31,6 @@
 
 /* VirtualBox includes */
 #include "ConsoleImpl.h"
-
 
 class Scan_code
 {

@@ -16,7 +16,7 @@
 /* Genode includes */
 #include <base/log.h>
 #include <timer_session/connection.h>
-#include <os/attached_io_mem_dataspace.h>
+#include <base/attached_io_mem_dataspace.h>
 #include <rom_session/connection.h>
 #include <muen/sinfo.h>
 
@@ -94,7 +94,7 @@ static Genode::Sinfo * sinfo()
 		try {
 			static Rom_connection sinfo_rom("subject_info_page");
 			static Sinfo sinfo(
-					(addr_t)env()->rm_session()->attach(sinfo_rom.dataspace()));
+					(addr_t)genode_env().rm().attach(sinfo_rom.dataspace()));
 			ptr = &sinfo;
 		} catch (...) {
 			error("unable to attach Sinfo ROM");
@@ -123,8 +123,9 @@ bool setup_subject_state()
 	}
 
 	try {
-		static Attached_io_mem_dataspace subject_ds(region.address,
-				region.size);
+		static Attached_io_mem_dataspace subject_ds(genode_env(),
+		                                            region.address,
+		                                            region.size);
 		cur_state = subject_ds.local_addr<struct Subject_state>();
 		return true;
 	} catch (...) {
@@ -152,8 +153,9 @@ bool setup_subject_interrupts()
 	}
 
 	try {
-		static Attached_io_mem_dataspace subject_intrs(region.address,
-				region.size);
+		static Attached_io_mem_dataspace subject_intrs(genode_env(),
+		                                               region.address,
+		                                               region.size);
 		static Guest_interrupts g((addr_t)subject_intrs.local_addr<addr_t>());
 		guest_interrupts = &g;
 		return true;

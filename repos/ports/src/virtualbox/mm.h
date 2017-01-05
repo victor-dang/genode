@@ -35,10 +35,10 @@ class Sub_rm_connection : private Genode::Rm_connection,
 
 	public:
 
-		Sub_rm_connection(Genode::size_t size)
+		Sub_rm_connection(Genode::Region_map &rm, Genode::size_t size)
 		:
 			Genode::Region_map_client(Rm_connection::create(size)),
-			_offset(Genode::env()->rm_session()->attach(dataspace())),
+			_offset(rm.attach(dataspace())),
 			_size(size)
 		{ }
 

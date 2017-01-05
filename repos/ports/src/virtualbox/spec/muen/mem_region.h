@@ -20,7 +20,7 @@
 #include <base/env.h>
 #include <base/lock.h>
 #include <util/list.h>
-#include <os/attached_io_mem_dataspace.h>
+#include <base/attached_io_mem_dataspace.h>
 #include <rom_session/connection.h>
 #include <muen/sinfo.h>
 
@@ -34,6 +34,7 @@ struct Mem_region : Genode::List<Mem_region>::Element,
 					Genode::Attached_io_mem_dataspace
 {
 	typedef Genode::Ram_session Ram_session;
+	typedef Genode::Region_map  Region_map;
 	typedef Genode::size_t      size_t;
 	typedef Genode::addr_t      addr_t;
 
@@ -46,7 +47,7 @@ struct Mem_region : Genode::List<Mem_region>::Element,
 	size_t				 region_size;
 	bool				 _clear;
 
-	addr_t _phys_base(size_t size)
+	addr_t _phys_base(Region_map &rm, size_t size)
 	{
 		struct Region_info
 		{
@@ -78,9 +79,7 @@ struct Mem_region : Genode::List<Mem_region>::Element,
 
 		if (!counter) {
 			Genode::Rom_connection sinfo_rom("subject_info_page");
-			Genode::Sinfo sinfo
-				((addr_t)Genode::env()->rm_session()->attach
-				 (sinfo_rom.dataspace()));
+			Genode::Sinfo sinfo ((addr_t)rm.attach (sinfo_rom.dataspace()));
 
 			struct Genode::Sinfo::Memregion_info region1, region4;
 			if (!sinfo.get_memregion_info("vm_ram_1", &region1)) {
@@ -119,10 +118,10 @@ struct Mem_region : Genode::List<Mem_region>::Element,
 
 	size_t size() const { return region_size; }
 
-	Mem_region(Ram_session &ram, size_t size, PPDMDEVINS pDevIns,
-	           unsigned iRegion)
+	Mem_region(Genode::Env &env, size_t size,
+	           PPDMDEVINS pDevIns, unsigned iRegion)
 	:
-		Attached_io_mem_dataspace(_phys_base(size), size),
+		Attached_io_mem_dataspace(env, _phys_base(env.rm(), size), size),
 		pDevIns(pDevIns),
 		iRegion(iRegion),
 		vm_phys(0), pfnHandlerR3(0), pvUserR3(0),

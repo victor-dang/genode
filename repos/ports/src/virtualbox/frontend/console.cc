@@ -28,6 +28,7 @@
 
 #include "console.h"
 #include "fb.h"
+#include "../vmm.h"
 
 static const bool debug = false;
 
@@ -134,7 +135,7 @@ void fireStateChangedEvent(IEventSource* aSource,
 	if (a_state != MachineState_PoweredOff)
 		return;
 
-	Genode::env()->parent()->exit(0);
+	genode_env().parent().exit(0);
 }
 
 void fireRuntimeErrorEvent(IEventSource* aSource, BOOL a_fatal,
