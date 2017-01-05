@@ -25,15 +25,6 @@ include $(BASE_DIR)/mk/base-libs.mk
 all:
 
 #
-# Make a rlib or dylib instead of object file
-#
-ifndef SHARED_LIB
-  CC_RUSTC_OPT += --crate-type rlib
-else
-  CC_RUSTC_OPT += --crate-type dylib
-endif
-
-#
 # Include common utility functions
 #
 include $(BASE_DIR)/mk/util.inc
@@ -80,9 +71,6 @@ ifdef SHARED_LIB
 LIB_SO       := $(addsuffix .lib.so,$(LIB))
 INSTALL_SO   := $(INSTALL_DIR)/$(LIB_SO)
 LIB_FILENAME := $(LIB_SO)
-else ifdef SRC_RS
-LIB_RLIB        := $(addsuffix .rlib,$(LIB))
-LIB_FILENAME := $(LIB_RLIB)
 else
 LIB_A        := $(addsuffix .lib.a,$(LIB))
 LIB_FILENAME := $(LIB_A)
@@ -154,10 +142,32 @@ all: $(LIB_TAG)
 #
 $(LIB_TAG) $(OBJECTS): $(HOST_TOOLS)
 
-$(LIB_TAG): $(LIB_A) $(LIB_SO) $(ABI_SO) $(INSTALL_SO) $(LIB_RLIB)
+$(LIB_TAG): $(LIB_A) $(LIB_SO) $(ABI_SO) $(INSTALL_SO)
 	@touch $@
 
 include $(BASE_DIR)/mk/generic.mk
+
+#
+# Rust support
+#
+# For a rust library, we create both an actual library (lib.a or lib.so) that
+# is used for linking the final binary, and an rlib file that is required for
+# compiling rust source codes that use the library. As the rlib is created from
+# the file specified at 'SRC_RS' via the pattern rule '%.rlib: %.rs', its name
+# corresponds to the source file, not the library name. To enable rustc to find
+# the library when compiling dependent compilation units, we create an
+# appropriately named symlink that points to the rlib file.
+#
+ifneq ($(SRC_RS),)
+ifneq ($(words $(SRC_RS)),1)
+$(error 'SRC_RC' of library $(LIB) has more than one element: $(SRC_RC))
+endif
+$(LIB_A): $(LIB).rlib
+endif
+
+.PRECIOUS: $(SRC_RC:.rs=.rlib)
+$(LIB).rlib: $(SRC_RS:.rs=.rlib)
+	$(VERBOSE)ln -s $< $@
 
 #
 # Rule to build the <libname>.lib.a file
@@ -171,12 +181,6 @@ $(LIB_A): $(OBJECTS)
 	$(MSG_MERGE)$(LIB_A)
 	$(VERBOSE)$(RM) -f $@
 	$(VERBOSE)$(AR) -rcs $@ $(OBJECTS)
-#
-# Rename from object to rlib
-#
-$(LIB_RLIB):  $(OBJECTS)
-	$(MSG_RENAME)$(LIB_RLIB)
-	$(VERBOSE)cp $(OBJECTS) $(LIB_RLIB)
 
 #
 # Link ldso-startup library to each shared library

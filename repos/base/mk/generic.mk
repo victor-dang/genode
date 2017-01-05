@@ -74,9 +74,13 @@ endif
 #
 # Compiling Rust sources
 #
-%.o: %.rs
+%.rlib: %.rs
 	$(MSG_COMP)$@
-	$(VERBOSE)rustc $(CC_RUSTC_OPT) -o $@ $<
+	$(VERBOSE)rustc $(CC_RUSTC_OPT) --crate-type rlib -o $@ $<
+
+%.o: %.rlib
+	$(MSG_CONVERT)$@
+	$(VERBOSE)ar p $< $*.0.o > $@
 
 #
 # Assembler files that must be preprocessed are fed to the C compiler.

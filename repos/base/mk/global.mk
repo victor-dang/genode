@@ -126,12 +126,10 @@ CC_ADA_OPT += $(CC_OLEVEL) $(CC_WARN)
 #
 # Rust-specific arguments
 #
-# Use the correct linker, include dependencies, and tell rust to produce object
-# files.
+# Use the correct linker, include dependencies.
 #
 CC_RUSTC_OPT += -C linker=$(LD)
 CC_RUSTC_OPT += $(foreach lib,$(LIBS),-L$(LIB_CACHE_DIR)/$(lib))
-CC_RUSTC_OPT += --emit obj
 
 #
 # Enable C++11 by default

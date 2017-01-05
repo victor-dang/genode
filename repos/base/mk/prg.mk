@@ -133,13 +133,6 @@ LD_CMD += $(addprefix $(LD_SCRIPT_PREFIX), $(LD_SCRIPTS))
 STATIC_LIBS := $(foreach l,$(ARCHIVES:.lib.a=),$(LIB_CACHE_DIR)/$l/$l.lib.a)
 
 #
-# --whole-archive does not work with rlibs
-#
-RUST_LIBS       := $(foreach l,$(ARCHIVES:.lib.a=),$(LIB_CACHE_DIR)/$l/$l.rlib)
-RUST_LIBS       := $(sort $(wildcard $(RUST_LIBS)))
-RUST_LIBS_BRIEF := $(subst $(LIB_CACHE_DIR),$$libs,$(RUST_LIBS))
-
-#
 # We need the linker option '--whole-archive' to make sure that all library
 # constructors marked with '__attribute__((constructor))' end up int the
 # binary. When not using this option, the linker goes through all libraries
@@ -162,7 +155,6 @@ LD_CMD += -Wl,--whole-archive -Wl,--start-group
 LD_CMD += $(LINK_ITEMS_BRIEF)
 LD_CMD += $(EXT_OBJECTS)
 LD_CMD += -Wl,--no-whole-archive
-LD_CMD += $(RUST_LIBS_BRIEF)
 LD_CMD += -Wl,--end-group
 
 #
