@@ -34,6 +34,8 @@ namespace Init {
 	class Traditional_child_policy;
 
 	using namespace Genode;
+	using Genode::size_t;
+	using Genode::strcmp;
 }
 
 

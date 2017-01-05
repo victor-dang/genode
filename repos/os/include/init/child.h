@@ -33,6 +33,8 @@ namespace Init {
 	class Child;
 
 	using namespace Genode;
+	using Genode::size_t;
+	using Genode::strlen;
 
 	typedef Genode::Registered<Genode::Parent_service> Parent_service;
 }
