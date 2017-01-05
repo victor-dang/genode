@@ -26,7 +26,10 @@ set build_components {
 	app/gdb_monitor
 }
 
-lappend_if [have_spec gpio]    build_components drivers/gpio
+lappend_if [have_spec gpio] build_components drivers/gpio
+
+lappend_if [have_spec nova] build_components lib/ld/nova
+lappend_if [have_spec foc]  build_components lib/ld/foc
 
 lappend build_components noux-pkg/[noux_gdb_pkg_name]
 
