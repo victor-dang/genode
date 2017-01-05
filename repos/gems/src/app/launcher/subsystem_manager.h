@@ -45,7 +45,7 @@ class Launcher::Subsystem_manager
 
 		size_t const _ram_preservation;
 
-		struct Child : Child_base, List<Child>::Element
+		struct Child : Cli_monitor::Child_base, List<Child>::Element
 		{
 			template <typename... ARGS>
 			Child(ARGS &&... args) : Child_base(args...) { }
