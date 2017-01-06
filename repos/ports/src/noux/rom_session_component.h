@@ -32,14 +32,16 @@ struct Noux::Rom_dataspace_info : Dataspace_info
 	~Rom_dataspace_info() { }
 
 	Dataspace_capability fork(Ram_session        &,
+	                          Region_map         &,
+	                          Allocator          &alloc,
 	                          Dataspace_registry &ds_registry,
 	                          Rpc_entrypoint     &) override
 	{
-		ds_registry.insert(new (env()->heap()) Rom_dataspace_info(ds_cap()));
+		ds_registry.insert(new (alloc) Rom_dataspace_info(ds_cap()));
 		return ds_cap();
 	}
 
-	void poke(addr_t dst_offset, void const *src, size_t len)
+	void poke(Region_map &, addr_t dst_offset, char const *src, size_t len)
 	{
 		error("attempt to poke onto a ROM dataspace");
 	}
@@ -120,14 +122,15 @@ class Noux::Rom_session_component : public Rpc_object<Rom_session>
 
 	public:
 
-		Rom_session_component(Rpc_entrypoint &ep, Vfs::Dir_file_system &root_dir,
+		Rom_session_component(Allocator &alloc, Rpc_entrypoint &ep,
+		                      Vfs::Dir_file_system &root_dir,
 		                      Dataspace_registry &ds_registry, Name const &name)
 		:
 			_ep(ep), _root_dir(root_dir), _ds_registry(ds_registry),
 			_ds_cap(_init_ds_cap(name))
 		{
 			_ep.manage(this);
-			_ds_registry.insert(new (env()->heap()) Rom_dataspace_info(_ds_cap));
+			_ds_registry.insert(new (alloc) Rom_dataspace_info(_ds_cap));
 		}
 
 		~Rom_session_component()
