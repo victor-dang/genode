@@ -11,7 +11,7 @@ __inet_nsap_ntoa T
 __inet_ntoa T
 __inet_ntop T
 __inet_pton T
-__isthreaded B
+__isthreaded B 4
 __mb_cur_max D 8
 __srget T
 __stderrp D 8
@@ -113,7 +113,7 @@ endnetgrent T
 endpwent W
 endttyent T
 endusershell T
-environ B
+environ B 4
 erand48 T
 err W
 err_set_exit T
@@ -439,11 +439,11 @@ offtime T
 open T
 opendir T
 openlog T
-optarg B
+optarg B 4
 opterr D 4
 optind D 4
-optopt B
-optreset B
+optopt B 4
+optreset B 4
 pathconf W
 pause W
 pclose T
@@ -729,7 +729,7 @@ strunvisx T
 strvis T
 strvisx T
 strxfrm T
-suboptarg B
+suboptarg B 4
 swab T
 swapcontext W
 swprintf T
