@@ -1398,8 +1398,7 @@ void Component::construct(Genode::Env &env)
 		 * reservation will be dropped when this scope is left and re-acquired
 		 * with the actual VM size which is determined below inside this scope.
 		 */
-		Vmm::Virtual_reservation
-			reservation(Genode::Thread::stack_area_virtual_base());
+		Vmm::Virtual_reservation reservation(env, Genode::Thread::stack_area_virtual_base());
 
 		Genode::log("--- Vancouver VMM starting ---");
 
@@ -1428,7 +1427,7 @@ void Component::construct(Genode::Env &env)
 
 	if (colocate)
 		/* re-adjust reservation to actual VM size */
-		static Vmm::Virtual_reservation reservation(vm_size);
+		static Vmm::Virtual_reservation reservation(env, vm_size);
 
 	/* setup guest memory */
 	static Guest_memory guest_memory(env, vm_size, fb_size);
