@@ -36,6 +36,7 @@ namespace Init {
 	using namespace Genode;
 	using Genode::size_t;
 	using Genode::strcmp;
+	using Genode::snprintf;
 }
 
 
