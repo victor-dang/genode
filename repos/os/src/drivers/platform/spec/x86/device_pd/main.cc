@@ -172,7 +172,7 @@ void Platform::Device_pd_component::assign_pci(Genode::Io_mem_dataspace_capabili
 	};
 
 	/* try to assign pci device to this protection domain */
-	if (_env.pd().assign_pci(page, rid))
+	if (!_env.pd().assign_pci(page, rid))
 		Genode::error("assignment of PCI device ", Rid(rid), " failed ",
 		              "phys=", Genode::Hex(ds_client.phys_addr()), " "
 		              "virt=", Genode::Hex(page));
