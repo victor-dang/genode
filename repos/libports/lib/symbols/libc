@@ -113,7 +113,7 @@ endnetgrent T
 endpwent W
 endttyent T
 endusershell T
-environ B 4
+environ B 8
 erand48 T
 err W
 err_set_exit T
@@ -439,7 +439,7 @@ offtime T
 open T
 opendir T
 openlog T
-optarg B 4
+optarg B 8
 opterr D 4
 optind D 4
 optopt B 4
@@ -729,18 +729,18 @@ strunvisx T
 strvis T
 strvisx T
 strxfrm T
-suboptarg B 4
+suboptarg B 8
 swab T
 swapcontext W
 swprintf T
 swscanf T
 symlink T
 sync W
-sys_errlist D 376
+sys_errlist D 752
 sys_nerr R
 sys_nsig R
-sys_siglist D 128
-sys_signame D 128
+sys_siglist D 256
+sys_signame D 256
 sysconf T
 sysctl T
 sysctlbyname T
@@ -782,7 +782,7 @@ ttyname T
 ttyname_r T
 ttyslot T
 twalk T
-tzname D 8
+tzname D 16
 tzset T
 tzsetwall T
 ualarm T
@@ -891,8 +891,8 @@ xsi_sigpause T
 # Symbols needed by libm
 #
 __mb_sb_limit D 4
-_DefaultRuneLocale D 3156
-_CurrentRuneLocale D 4
+_DefaultRuneLocale D 4224
+_CurrentRuneLocale D 8
 __isinff T
 __isinfl T
 
