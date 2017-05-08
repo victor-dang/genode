@@ -140,9 +140,16 @@ EXPAT_OK = $(call check_equal_f,\
              $(shell pkg-config --exists expat && echo ok),ok,\
              Need to have 'libexpat' installed.)
 
+#
+# Check if 'GNAT' is installed
+#
+HOST_GCC_VERSION := $(shell gcc -dumpversion)
+GNAT_OK = $(call check_equal_f,$(shell gnatmake --version | sed -n -e 's/GNATMAKE //p'),$(HOST_GCC_VERSION),\
+            Need to have GNAT installed and the GNAT version must match the GCC version (found GCC $(HOST_GCC_VERSION)).)
 
 TOOLS_OK = $(AUTOCONF_OK) $(AUTOCONFINST_OK) $(PKG_CONFIG_OK) $(CURSES_OK) \
-           $(TEXINFO_OK) $(WGET_OK) $(AUTOGEN_OK) $(GPG_OK) $(EXPAT_OK)
+           $(TEXINFO_OK) $(WGET_OK) $(AUTOGEN_OK) $(GPG_OK) $(EXPAT_OK) \
+           $(GNAT_OK)
 
 ifneq ($(strip $(TOOLS_OK)),)
 $(error Please install missing tools.)
