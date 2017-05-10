@@ -43,8 +43,8 @@ struct Driver_factory : Regulator::Driver_factory
 			return _pmu;
 
 		default:
-			throw Service_denied(); /* invalid regulator */
-		};
+			throw Genode::Service_denied(); /* invalid regulator */
+		}
 	}
 
 	void destroy(Regulator::Driver &driver) { }

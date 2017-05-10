@@ -188,7 +188,7 @@ struct Block::Main
 			Genode::error("no AHCI controller found");
 			env.parent().exit(~0);
 		}
-		catch (Genode::Parent::Service_denied) {
+		catch (Genode::Service_denied) {
 			Genode::error("hardware access denied");
 			env.parent().exit(~0);
 		}
