@@ -11,18 +11,11 @@
  * under the terms of the GNU Affero General Public License version 3.
  */
 
-#ifndef _CORE__SPEC__X86_64__MUEN__SINFO_INSTANCE_H_
-#define _CORE__SPEC__X86_64__MUEN__SINFO_INSTANCE_H_
+#include <sinfo_instance.h>
+#include <platform.h>
 
-/* base includes */
-#include <muen/sinfo.h>
-
-namespace Genode
+Genode::Sinfo * Genode::sinfo()
 {
-	/**
-	 * Return sinfo singleton
-	 */
-	Sinfo * sinfo();
+	static Sinfo singleton(Platform::mmio_to_virt(Sinfo::PHYSICAL_BASE_ADDR));
+	return &singleton;
 }
-
-#endif /* _CORE__SPEC__X86_64__MUEN__SINFO_INSTANCE_H_ */

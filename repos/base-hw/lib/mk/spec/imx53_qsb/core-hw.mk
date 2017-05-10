@@ -11,6 +11,7 @@ INC_DIR += $(REP_DIR)/src/core/spec/imx53
 INC_DIR += $(REP_DIR)/src/core/spec/imx
 
 SRC_CC += spec/imx53/pic.cc
+SRC_CC += spec/imx53/timer.cc
 SRC_CC += spec/arm/cpu_context_trustzone.cc
 
 ifneq ($(filter-out $(SPECS),trustzone),)

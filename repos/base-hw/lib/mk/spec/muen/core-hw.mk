@@ -23,6 +23,8 @@ SRC_CC += spec/x86_64/muen/kernel/thread_exception.cc
 SRC_CC += spec/x86_64/muen/platform_support.cc
 SRC_CC += spec/x86_64/muen/kernel/vm.cc
 SRC_CC += spec/x86_64/muen/platform_services.cc
+SRC_CC += spec/x86_64/muen/sinfo_instance.cc
+SRC_CC += spec/x86_64/muen/timer.cc
 SRC_CC += kernel/vm_thread_on.cc
 
 SRC_CC += kernel/kernel.cc

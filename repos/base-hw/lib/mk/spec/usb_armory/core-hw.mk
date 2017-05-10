@@ -18,6 +18,7 @@ SRC_CC += spec/arm_v7/trustzone/kernel/vm.cc
 SRC_CC += spec/arm_v7/vm_session_component.cc
 SRC_CC += spec/arm_v7/trustzone/vm_session_component.cc
 SRC_CC += spec/imx53/pic.cc
+SRC_CC += spec/imx53/timer.cc
 SRC_CC += spec/arm/cpu_context_trustzone.cc
 
 # add assembly sources
