@@ -401,14 +401,9 @@ extern "C" int pci_mapreg_map(struct pci_attach_args *pa,
 
 	cmd |= Pci_driver::CMD_MASTER;
 
-	Genode::size_t donate = 4096;
-	Genode::retry<Platform::Device::Quota_exceeded>(
-		[&] () { device.config_write(Pci_driver::CMD, cmd,
-		                             Platform::Device::ACCESS_16BIT); },
-		[&] () {
-			drv->pci().upgrade_ram(donate);
-			donate *= 2;
-		});
+	drv->pci().with_upgrade([&] () {
+		device.config_write(Pci_driver::CMD, cmd, Platform::Device::ACCESS_16BIT);
+	});
 
 	return 0;
 }
