@@ -72,12 +72,8 @@ class Pci_dev_list
 				_pci_caps.insert(new (Lx::Malloc::mem()) Element(cap));
 
 				/* try next one. Upgrade session quota on demand.*/
-				Platform::Device_capability next_cap;
 				Lx::pci()->with_upgrade([&] () {
-					next_cap = Lx::pci()->next_device(cap); });
-
-				Lx::pci()->release_device(cap);
-				cap = next_cap;
+					cap = Lx::pci()->next_device(cap); });
 			}
 		}
 
