@@ -132,6 +132,9 @@ class Genode::Pl011_uart : Mmio
 Genode::Pl011_uart::Pl011_uart(addr_t const base, uint32_t const clock,
                                uint32_t const baud_rate) : Mmio(base)
 {
+	/* if clock is not set, skip initialization */
+	if (!clock) return;
+
 	write<Uartcr>(Uartcr::Uarten::bits(1) |
 	              Uartcr::Txe::bits(1)    |
 	              Uartcr::Rxe::bits(1));
