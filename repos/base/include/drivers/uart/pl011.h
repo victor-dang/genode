@@ -170,12 +170,22 @@ Genode::Pl011_uart::Pl011_uart(addr_t const base, uint32_t const clock,
 
 void Genode::Pl011_uart::put_char(char const c)
 {
-	/* wait as long as the transmission buffer is full */
-	while (read<Uartfr::Txff>()) ;
+	Genode::addr_t reg = 0x3f215040;
+	asm volatile (
+		"   and   x4, %0, #0x18 \n"
+		"1: ldrsw x5, [x4]      \n"
+		"   and   x5, x5, #32   \n"
+		"   cmp   x5, #32       \n"
+		"   b.eq  1b            \n"
+		"   mov   w5, %1        \n"
+		"   strb  w5, [%0]      \n"
+	: "=r" (reg) : "r" (c) : "x3", "x4" );
 
-	/* transmit character */
-	write<Uartdr::Data>(c);
-	_wait_until_ready();
+	///* wait as long as the transmission buffer is full */
+	//while (read<Uartfr::Txff>()) ;
+
+	///* transmit character */
+	//write<Uartdr::Data>(c);
 }
 
 
