@@ -30,7 +30,6 @@ void Interface::_handle_eth(void              *const  eth_base,
 		Ethernet_frame &eth = *new (eth_base) Ethernet_frame(eth_size);
 		Interface &remote = _remote.deref();
 		Packet_log_config log_cfg;
-		log_cfg.ipv4 = Packet_log_config::SHORT;
 
 		if (_log_time) {
 			Genode::Duration const new_time    = _timer.curr_time();
