@@ -383,9 +383,9 @@ void Interface::_send_dhcp_reply(Dhcp_server               const &dhcp_srv,
 	reply_dhcp.hops(0);
 	reply_dhcp.xid(xid);
 	reply_dhcp.secs(0);
-	reply_dhcp.flags(0x8000);
-	reply_dhcp.ciaddr(Ipv4_address());
-	reply_dhcp.yiaddr(client_ip);
+	reply_dhcp.flags(0);
+	reply_dhcp.ciaddr(msg_type == Dhcp_packet::Message_type::INFORM ? client_ip : Ipv4_address());
+	reply_dhcp.yiaddr(msg_type == Dhcp_packet::Message_type::INFORM ? Ipv4_address() : client_ip);
 	reply_dhcp.siaddr(_router_ip());
 	reply_dhcp.giaddr(Ipv4_address());
 	reply_dhcp.client_mac(client_mac);
@@ -493,6 +493,14 @@ void Interface::_handle_dhcp_request(Ethernet_frame &eth,
 						return;
 					}
 				}
+			case Dhcp_packet::Message_type::INFORM:
+
+				_send_dhcp_reply(dhcp_srv, eth.src(),
+				                 allocation.ip(),
+				                 Dhcp_packet::Message_type::ACK,
+				                 dhcp.xid());
+				return;
+
 			case Dhcp_packet::Message_type::DECLINE:
 			case Dhcp_packet::Message_type::RELEASE:
 
@@ -517,6 +525,7 @@ void Interface::_handle_dhcp_request(Ethernet_frame &eth,
 						              dhcp.client_mac(), _timer,
 						              _config().rtt());
 
+log(__func__,__LINE__," _ip_allocations + ",&allocation);
 					_ip_allocations.insert(&allocation);
 					if (_config().verbose()) {
 						log("Offer IP allocation: ", allocation,
@@ -948,7 +957,9 @@ Interface::~Interface()
 	/* destroy IP allocations */
 	_destroy_released_ip_allocations();
 	while (Ip_allocation *allocation = _ip_allocations.first()) {
-		_destroy_ip_allocation(*allocation); }
+		_ip_allocations.remove(allocation);
+		_destroy_ip_allocation(*allocation);
+	}
 }
 
 
