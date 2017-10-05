@@ -68,12 +68,9 @@ class Net::Ethernet_frame
 		/**
 		 * Id representing encapsulated protocol.
 		 */
-		struct Type
-		{
-			enum Enum : Genode::uint16_t {
-				IPV4 = 0x0800,
-				ARP  = 0x0806,
-			};
+		enum class Type : Genode::uint16_t {
+			IPV4 = 0x0800,
+			ARP  = 0x0806,
 		};
 
 
@@ -105,7 +102,7 @@ class Net::Ethernet_frame
 		/**
 		 * \return EtherType - type of encapsulated protocol.
 		 */
-		Genode::uint16_t type() const { return host_to_big_endian(_type); }
+		Type type() const { return (Type)host_to_big_endian(_type); }
 
 		/**
 		 * \return payload data.
@@ -137,7 +134,7 @@ class Net::Ethernet_frame
 		 *
 		 * \param type  the EtherType to be set.
 		 */
-		void type(Type::Enum type) { _type = host_to_big_endian(type); }
+		void type(Type type) { _type = host_to_big_endian((Genode::uint16_t)type); }
 
 
 		/***************
@@ -175,7 +172,7 @@ class Net::Ethernet_frame_sized : public Ethernet_frame
 	public:
 
 		Ethernet_frame_sized(Mac_address dst_in, Mac_address src_in,
-		                     Type::Enum type_in)
+		                     Type type_in)
 		:
 			Ethernet_frame(sizeof(Ethernet_frame))
 		{
