@@ -525,7 +525,6 @@ void Interface::_handle_dhcp_request(Ethernet_frame &eth,
 						              dhcp.client_mac(), _timer,
 						              _config().rtt());
 
-log(__func__,__LINE__," _ip_allocations + ",&allocation);
 					_ip_allocations.insert(&allocation);
 					if (_config().verbose()) {
 						log("Offer IP allocation: ", allocation,

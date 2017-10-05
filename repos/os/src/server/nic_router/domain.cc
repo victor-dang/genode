@@ -46,7 +46,6 @@ Dhcp_server::Dhcp_server(Xml_node            const  node,
 	{
 		throw Invalid();
 	}
-	
 }
 
 
