@@ -70,8 +70,6 @@ class Net::Tcp_packet
 
 	public:
 
-		enum Protocol_id { IP_ID = 6 };
-
 		class No_tcp_packet : Exception {};
 
 
@@ -131,7 +129,7 @@ class Net::Tcp_packet
 				uint16_t d = ip_dst.addr[i] << 8 | ip_dst.addr[i + 1];
 				sum += s + d;
 			}
-			uint8_t prot[] = { 0, IP_ID };
+			uint8_t prot[] = { 0, (uint8_t)Ipv4_packet::Protocol::TCP };
 			sum += host_to_big_endian(*(uint16_t *)&prot) + tcp_size;
 
 			/* sum up TCP packet itself */

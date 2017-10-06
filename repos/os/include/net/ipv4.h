@@ -117,11 +117,10 @@ class Net::Ipv4_packet
 
 	public:
 
-		struct Protocol
+		enum class Protocol : Genode::uint8_t
 		{
-			enum Enum : Genode::uint8_t {
-				UDP = 17,
-			};
+			TCP = 6,
+			UDP = 17,
 		};
 
 		enum Precedence {
@@ -171,7 +170,7 @@ class Net::Ipv4_packet
 		Genode::uint8_t                 flags()                  const { return _flags; }
 		Genode::size_t                  fragment_offset()        const { return _fragment_offset; }
 		Genode::uint8_t                 time_to_live()           const { return _time_to_live; }
-		Genode::uint8_t                 protocol()               const { return _protocol; }
+		Protocol                        protocol()               const { return (Protocol)_protocol; }
 		Genode::uint16_t                checksum()               const { return host_to_big_endian(_checksum); }
 		Ipv4_address                    src()                    const { return Ipv4_address((void *)&_src); }
 		Ipv4_address                    dst()                    const { return Ipv4_address((void *)&_dst); }
@@ -187,7 +186,7 @@ class Net::Ipv4_packet
 		void flags(Genode::uint8_t v)            { _flags = v; ; }
 		void fragment_offset(Genode::size_t v)   { _fragment_offset = v; ; }
 		void time_to_live(Genode::uint8_t v)     { _time_to_live = v; }
-		void protocol(Protocol::Enum v)          { _protocol = v; }
+		void protocol(Protocol v)                { _protocol = (Genode::uint8_t)v; }
 		void checksum(Genode::uint16_t checksum) { _checksum = host_to_big_endian(checksum); }
 		void src(Ipv4_address v)                 { v.copy(&_src); }
 		void dst(Ipv4_address v)                 { v.copy(&_dst); }

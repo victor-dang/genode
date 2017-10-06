@@ -86,18 +86,11 @@ class Net::Dhcp_packet
 		Genode::uint32_t  _magic_cookie;
 		Genode::uint8_t   _opts[0];
 
-		enum Flag {
-			BROADCAST = 0x80
-		};
+		enum Flag { BROADCAST = 0x80 };
 
 	public:
 
-		struct Htype
-		{
-			enum Enum : Genode::uint8_t {
-				ETH = 1,
-			};
-		};
+		enum class Htype : Genode::uint8_t { ETH = 1 };
 
 		/**
 		 * This class represents the data layout of an DHCP option.
@@ -182,7 +175,7 @@ class Net::Dhcp_packet
 		 ***************/
 
 		Genode::uint8_t   op()           const { return _op; }
-		Genode::uint8_t   htype()        const { return _htype; }
+		Htype             htype()        const { return (Htype)_htype; }
 		Genode::uint8_t   hlen()         const { return _hlen; }
 		Genode::uint8_t   hops()         const { return _hops; }
 		Genode::uint32_t  xid()          const { return host_to_big_endian(_xid); }
@@ -202,7 +195,7 @@ class Net::Dhcp_packet
 		void flags(Genode::uint16_t v) { _flags = host_to_big_endian(v); }
 		void file(const char* v)       { Genode::memcpy(_file, v, sizeof(_file));  }
 		void op(Genode::uint8_t v)     { _op = v; }
-		void htype(Htype::Enum v)      { _htype = v; }
+		void htype(Htype v)            { _htype = (Genode::uint8_t)v; }
 		void hlen(Genode::uint8_t v)   { _hlen = v; }
 		void hops(Genode::uint8_t v)   { _hops = v; }
 		void xid(Genode::uint32_t v)   { _xid  = host_to_big_endian(v);  }

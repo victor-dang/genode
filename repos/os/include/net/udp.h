@@ -51,9 +51,6 @@ class Net::Udp_packet
 
 	public:
 
-		enum Protocol_id { IP_ID = 0x11 };
-
-
 		/**
 		 * Exception used to indicate protocol violation.
 		 */
@@ -127,7 +124,7 @@ class Net::Udp_packet
 				Genode::uint16_t d = dst.addr[i] << 8 | dst.addr[i + 1];
 				sum += s + d;
 			}
-			Genode::uint8_t prot[] = { 0, IP_ID };
+			Genode::uint8_t prot[] = { 0, (Genode::uint8_t)Ipv4_packet::Protocol::UDP };
 			sum += host_to_big_endian(*(Genode::uint16_t*)&prot) + length();
 
 			/*
