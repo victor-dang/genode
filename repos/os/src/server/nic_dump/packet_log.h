@@ -26,6 +26,11 @@
 
 namespace Net {
 
+	enum class Packet_log_style : Genode::uint8_t
+	{
+		NONE, SHORT, COMPACT, COMPREHENSIVE,
+	};
+
 	struct Packet_log_config;
 
 	template <typename PKT>
@@ -38,19 +43,19 @@ namespace Net {
  */
 struct Net::Packet_log_config
 {
-	enum Enum : Genode::uint8_t { NONE, SHORT, COMPACT, COMPREHENSIVE };
+	using Style = Packet_log_style;
 
-	Enum eth, arp, ipv4, dhcp, udp, tcp;
+	Style eth, arp, ipv4, dhcp, udp, tcp;
 
-	Packet_log_config(Enum def = COMPACT)
+	Packet_log_config(Style def = Style::COMPACT)
 	: eth(def), arp(def), ipv4(def), dhcp(def), udp(def), tcp(def) { }
 
-	Packet_log_config(Enum eth,
-	                  Enum arp,
-	                  Enum ipv4,
-	                  Enum dhcp,
-	                  Enum udp,
-	                  Enum tcp)
+	Packet_log_config(Style eth,
+	                  Style arp,
+	                  Style ipv4,
+	                  Style dhcp,
+	                  Style udp,
+	                  Style tcp)
 	: eth(eth), arp(arp), ipv4(ipv4), dhcp(dhcp), udp(udp), tcp(tcp) { }
 };
 

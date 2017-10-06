@@ -25,7 +25,7 @@ void Packet_log<Dhcp_packet>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.dhcp) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mDHCP\033[0m");
 		print(output, " op ",   _pkt.op());
@@ -49,12 +49,12 @@ void Packet_log<Dhcp_packet>::print(Output &output) const
 		});
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mDHCP\033[0m");
 		break;
@@ -86,7 +86,7 @@ void Packet_log<Arp_packet>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.arp) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mARP\033[0m");
 		print(output, " hw ",     _pkt.hardware_address_type());
@@ -107,12 +107,12 @@ void Packet_log<Arp_packet>::print(Output &output) const
 		}
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mARP\033[0m");
 		break;
@@ -129,7 +129,7 @@ void Packet_log<Ethernet_frame>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.eth) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mETH\033[0m");
 		print(output, " src ", _pkt.src());
@@ -137,12 +137,12 @@ void Packet_log<Ethernet_frame>::print(Output &output) const
 		print(output, " typ ", (Genode::uint16_t)_pkt.type());
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mETH\033[0m");
 		break;
@@ -173,7 +173,7 @@ void Packet_log<Ipv4_packet>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.ipv4) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mIPV4\033[0m");
 		print(output, " hdrlen ", _pkt.header_length());
@@ -191,12 +191,12 @@ void Packet_log<Ipv4_packet>::print(Output &output) const
 		print(output, " dst ",    _pkt.dst());
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mIPV4\033[0m");
 		break;
@@ -226,7 +226,7 @@ void Packet_log<Tcp_packet>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.tcp) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mTCP\033[0m");
 		print(output, " src ",   _pkt.src_port());
@@ -240,12 +240,12 @@ void Packet_log<Tcp_packet>::print(Output &output) const
 		print(output, " urgp ",  _pkt.urgent_ptr());
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mTCP\033[0m");
 		break;
@@ -262,7 +262,7 @@ void Packet_log<Udp_packet>::print(Output &output) const
 
 	/* print header attributes */
 	switch (_cfg.udp) {
-	case Packet_log_config::COMPREHENSIVE:
+	case Packet_log_style::COMPREHENSIVE:
 
 		print(output, "\033[32mUDP\033[0m");
 		print(output, " src ", _pkt.src_port());
@@ -271,12 +271,12 @@ void Packet_log<Udp_packet>::print(Output &output) const
 		print(output, " crc ", _pkt.checksum());
 		break;
 
-	case Packet_log_config::COMPACT:
+	case Packet_log_style::COMPACT:
 
 		print(output, _pkt);
 		break;
 
-	case Packet_log_config::SHORT:
+	case Packet_log_style::SHORT:
 
 		print(output, "\033[32mUDP\033[0m");
 		break;
