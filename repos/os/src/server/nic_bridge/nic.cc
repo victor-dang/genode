@@ -84,14 +84,14 @@ bool Net::Nic::handle_ip(Ethernet_frame *eth, Genode::size_t size) {
 			if (dhcp->op() == Dhcp_packet::REPLY) {
 
 				try {
-					Dhcp_packet::Message_type &msg_type =
-						dhcp->option<Dhcp_packet::Message_type>();
+					Dhcp_packet::Message_type const msg_type =
+						dhcp->option<Dhcp_packet::Message_type_option>().value();
 
 					/*
 					 * Extract the IP address and set it in the client's
 					 * session-component
 					 */
-					if (msg_type.value() == Dhcp_packet::Message_type::ACK) {
+					if (msg_type == Dhcp_packet::Message_type::ACK) {
 						Mac_address_node *node =
 							vlan().mac_tree.first();
 						if (node)

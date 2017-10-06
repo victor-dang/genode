@@ -130,38 +130,36 @@ class Net::Dhcp_packet
 
 			public:
 
-				struct Code
-				{
-					enum Enum {
-						SUBNET_MASK    = 1,
-						ROUTER         = 3,
-						DNS_SERVER     = 6,
-						BROADCAST_ADDR = 28,
-						REQ_IP_ADDR    = 50,
-						IP_LEASE_TIME  = 51,
-						OPT_OVERLOAD   = 52,
-						MSG_TYPE       = 53,
-						SERVER         = 54,
-						REQ_PARAMETER  = 55,
-						MESSAGE        = 56,
-						MAX_MSG_SZ     = 57,
-						RENEWAL        = 58,
-						REBINDING      = 59,
-						VENDOR         = 60,
-						CLI_ID         = 61,
-						TFTP_SRV_NAME  = 66,
-						BOOT_FILE      = 67,
-						END            = 255,
-					};
+				enum class Code : Genode::uint8_t {
+					INVALID        = 0,
+					SUBNET_MASK    = 1,
+					ROUTER         = 3,
+					DNS_SERVER     = 6,
+					BROADCAST_ADDR = 28,
+					REQ_IP_ADDR    = 50,
+					IP_LEASE_TIME  = 51,
+					OPT_OVERLOAD   = 52,
+					MSG_TYPE       = 53,
+					SERVER         = 54,
+					REQ_PARAMETER  = 55,
+					MESSAGE        = 56,
+					MAX_MSG_SZ     = 57,
+					RENEWAL        = 58,
+					REBINDING      = 59,
+					VENDOR         = 60,
+					CLI_ID         = 61,
+					TFTP_SRV_NAME  = 66,
+					BOOT_FILE      = 67,
+					END            = 255,
 				};
 
-				Option(Code::Enum code, Genode::uint8_t len)
-				: _code(code), _len(len) { }
+				Option(Code code, Genode::uint8_t len)
+				: _code((Genode::uint8_t)code), _len(len) { }
 
 				Option() { }
 
-				Genode::uint8_t code() const { return _code; }
-				Genode::uint8_t len()  const { return _len; }
+				Code             code() const { return (Code)_code; }
+				Genode::uint8_t len()   const { return _len; }
 
 
 				/*********
@@ -185,7 +183,7 @@ class Net::Dhcp_packet
 
 			public:
 
-				Option_tpl(Code::Enum code, T value)
+				Option_tpl(Code code, T value)
 				: Option(code, sizeof(T)), _value(value) { }
 
 		} __attribute__((packed));
@@ -196,44 +194,44 @@ class Net::Dhcp_packet
 		 */
 		struct Ip_lease_time : Option_tpl<Genode::uint32_t>
 		{
-			static constexpr Code::Enum CODE = Code::IP_LEASE_TIME;
+			static constexpr Code CODE = Code::IP_LEASE_TIME;
 
 			Ip_lease_time(Genode::uint32_t time)
 			: Option_tpl(CODE, host_to_big_endian(time)) { }
 		};
 
+		enum class Message_type : Genode::uint8_t {
+			DISCOVER  = 1,
+			OFFER     = 2,
+			REQUEST   = 3,
+			DECLINE   = 4,
+			ACK       = 5,
+			NAK       = 6,
+			RELEASE   = 7,
+			INFORM    = 8
+		};
 
 		/**
 		 * DHCP option that specifies the DHCP message type
 		 */
-		struct Message_type : Option_tpl<Genode::uint8_t>
+		struct Message_type_option : Option_tpl<Genode::uint8_t>
 		{
-			static constexpr Code::Enum CODE = Code::MSG_TYPE;
+			static constexpr Code CODE = Code::MSG_TYPE;
 
-			enum Enum : Genode::uint8_t {
-				DISCOVER  = 1,
-				OFFER     = 2,
-				REQUEST   = 3,
-				DECLINE   = 4,
-				ACK       = 5,
-				NAK       = 6,
-				RELEASE   = 7,
-				INFORM    = 8
-			};
+			Message_type_option(Message_type value)
+			: Option_tpl(CODE, (Genode::uint8_t)value) { }
 
-			Message_type(Enum value) : Option_tpl(CODE, value) { }
-
-			Enum value() const { return (Enum)_value; }
+			Message_type value() const { return (Message_type)_value; }
 		};
 
 
 		/**
 		 * DHCP options that have only one IPv4 address as payload
 		 */
-		template <Option::Code::Enum _CODE>
+		template <Option::Code _CODE>
 		struct Ipv4_option : Option_tpl<Genode::uint32_t>
 		{
-			static constexpr Code::Enum CODE = _CODE;
+			static constexpr Code CODE = _CODE;
 
 			Ipv4_option(Ipv4_address value)
 			: Option_tpl(CODE, value.to_uint32_big_endian()) { }
@@ -253,7 +251,7 @@ class Net::Dhcp_packet
 		 */
 		struct Options_end : Option
 		{
-			static constexpr Code::Enum CODE = Code::END;
+			static constexpr Code CODE = Code::END;
 
 			Options_end() : Option(CODE, 0) { }
 		};
@@ -302,7 +300,9 @@ class Net::Dhcp_packet
 		{
 			for (unsigned i = 0; ; ) {
 				Option &opt = *(Option*)&_opts[i];
-				if (!opt.code() || opt.code() == Option::Code::END) {
+				if (opt.code() == Option::Code::INVALID ||
+				    opt.code() == Option::Code::END)
+				{
 					return;
 				}
 				functor(opt);
@@ -322,7 +322,9 @@ class Net::Dhcp_packet
 			void *ptr = &_opts;
 			while (true) {
 				Option &opt = *Genode::construct_at<Option>(ptr);
-				if (opt.code() == Option::Code::END || opt.code() == 0) {
+				if (opt.code() == Option::Code::INVALID ||
+				    opt.code() == Option::Code::END)
+				{
 					throw Option_not_found();
 				}
 				if (opt.code() == T::CODE) {
