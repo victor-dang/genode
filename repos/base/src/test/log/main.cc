@@ -14,6 +14,7 @@
 
 #include <base/component.h>
 #include <base/log.h>
+#include <log_session/log_session.h>
 
 
 void Component::construct(Genode::Env &env)
@@ -32,6 +33,15 @@ void Component::construct(Genode::Env &env)
 
 	String<32> hex(Hex(3));
 	log("String(Hex(3)):     ", hex);
+
+	log("Very long messages:");
+	static char buf[2*Log_session::MAX_STRING_LEN - 2];
+	for (char &c : buf) c = '.';
+	buf[0] = 'X';                                 /* begin of first line */
+	buf[Log_session::MAX_STRING_LEN - 2]   = 'X'; /* last before flushed */
+	buf[Log_session::MAX_STRING_LEN - 1]   = 'X'; /* first after flush */
+	buf[2*Log_session::MAX_STRING_LEN - 3] = 'X'; /* end of second line */
+	log(Cstring(buf));
 
 	log("Test done.");
 }
