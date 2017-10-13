@@ -20,7 +20,7 @@ using Hw::Memory_region;
 using Genode::addr_t;
 using Genode::Native_utcb;
 
-static constexpr addr_t USER_START = (addr_t)Genode::user_utcb_main_thread()
+static constexpr addr_t USER_START = Genode::user_utcb_main_thread()
                                      + sizeof(Native_utcb);
 static constexpr addr_t KERNEL_START = 0xffffffc000000000UL;
 

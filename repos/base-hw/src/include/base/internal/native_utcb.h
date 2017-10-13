@@ -39,8 +39,7 @@ namespace Genode {
 	 * We set it architectural independent to the start of the address space,
 	 * but leave out page zero for * null-pointer dereference detection.
 	 */
-	static constexpr Native_utcb * user_utcb_main_thread() {
-		return (Genode::Native_utcb*) (get_page_size()); }
+	static constexpr addr_t user_utcb_main_thread() { return get_page_size(); }
 
 	/**
 	 * Core and user-land components have different main thread's UTCB locations.
