@@ -133,15 +133,17 @@ void Kernel::Thread::_call_update_instr_region()
 }
 
 
+extern void * kernel_stack;
+
 void Thread::proceed(unsigned const cpu)
 {
-	asm volatile("str  sp, [%0]      \n"
-	             "mov  sp, %1        \n"
-	             "msr  spsr_cxsf, %2 \n"
-	             "mov  lr, %3        \n"
+	regs->cpu_exception = (addr_t)&kernel_stack + Cpu::KERNEL_STACK_SIZE * (cpu+1);
+
+	asm volatile("mov  sp, %0        \n"
+	             "msr  spsr_cxsf, %1 \n"
+	             "mov  lr, %2        \n"
 	             "ldm  sp, {r0-r14}^ \n"
 	             "subs pc, lr, #0    \n"
-	             :: "r" (&regs->cpu_exception),
-	                "r" (static_cast<Cpu::Context*>(&*regs)),
+	             :: "r" (static_cast<Cpu::Context*>(&*regs)),
 	                "r" (regs->cpsr), "r" (regs->ip));
 }
