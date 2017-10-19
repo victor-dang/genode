@@ -25,6 +25,11 @@ namespace Nit6_solox {
 		/* normal RAM */
 		RAM0_BASE = 0x80000000,
 		RAM0_SIZE = 0x40000000,
+
+		/* SD host controller */
+		SDHC_IRQ       = 55,
+		SDHC_MMIO_BASE = 0x02194000,
+		SDHC_MMIO_SIZE = 0x00004000,
 	};
 };
 

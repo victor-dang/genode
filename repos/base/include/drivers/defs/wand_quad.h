@@ -28,6 +28,11 @@ namespace Wand_quad {
 		/* normal RAM */
 		RAM0_BASE = 0x10000000,
 		RAM0_SIZE = 0x80000000,
+
+		/* SD host controller */
+		SDHC_IRQ       = 54,
+		SDHC_MMIO_BASE = 0x02190000,
+		SDHC_MMIO_SIZE = 0x00004000,
 	};
 };
 
