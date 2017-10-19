@@ -226,7 +226,7 @@ int Rm_client::pager(Ipc_pager &pager)
 
 		if (pf_type == Region_map::State::EXEC_FAULT) {
 
-			print_page_fault("access violation at memory",
+			print_page_fault("attempted exec at non-executable memory",
 			                 pf_addr, pf_ip, pf_type, *this);
 
 			/* register fault at responsible region map */
