@@ -36,6 +36,7 @@ set build_components {
 	core init
 	drivers/timer drivers/nic
 	test/http_srv
+	lib/vfs/lxip
 }
 
 lappend_if $use_usb_driver              build_components drivers/usb
