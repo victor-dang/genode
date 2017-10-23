@@ -9,6 +9,8 @@ import_from_depot genodelabs/src/[base_src] \
                   genodelabs/pkg/sculpt \
                   genodelabs/src/e2fsprogs \
                   genodelabs/src/vbox5-nova \
+                  genodelabs/src/findutils \
+                  genodelabs/src/grep \
                   genodelabs/src/libiconv
 
 install_config {

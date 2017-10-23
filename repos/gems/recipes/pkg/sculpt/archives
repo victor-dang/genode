@@ -24,3 +24,5 @@ _/src/vbox_pointer
 _/src/vfs
 _/src/rump
 _/src/ipxe_nic_drv
+_/src/grep
+_/src/findutils
