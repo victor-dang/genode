@@ -140,7 +140,7 @@ set config_of_app {
 			<policy label_prefix="noux" port="8888"/>
 			<vfs>
 				<dir name="dev">
-					<dir name="socket"> <lxip dhcp="yes"/> </dir
+					<dir name="socket"> <lxip dhcp="yes"/> </dir>
 					<log/>
 				</dir>
 			</vfs>
