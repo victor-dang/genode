@@ -1,0 +1,47 @@
+assert_spec nit6_solox
+
+create_boot_directory
+
+import_from_depot skalk/src/base-hw-nit6_solox \
+                  skalk/src/nit6_solox_drivers \
+                  skalk/src/init
+
+install_config  {
+	<config>
+		<parent-provides>
+			<service name="ROM"/>
+			<service name="IRQ"/>
+			<service name="IO_MEM"/>
+			<service name="PD"/>
+			<service name="RM"/>
+			<service name="CPU"/>
+			<service name="LOG"/>
+		</parent-provides>
+		<default-route>
+			<any-service> <parent/> <any-child/> </any-service>
+		</default-route>
+		<default caps="100"/>
+
+		<start name="timer">
+			<resource name="RAM" quantum="1M"/>
+			<provides><service name="Timer"/></provides>
+		</start>
+
+		<start name="sd_card_drv">
+			<resource name="RAM" quantum="1M"/>
+			<provides><service name="Block"/></provides>
+		</start>
+
+		<start name="test-blk-cli">
+			<resource name="RAM" quantum="4M" />
+			<config test_size="512K" />
+		</start>
+	</config> }
+
+build { core test/blk/cli }
+append boot_modules { test-blk-cli }
+build_boot_image $boot_modules
+
+run_genode_until forever
+
+# vi: set ft=tcl :
