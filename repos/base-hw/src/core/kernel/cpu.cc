@@ -74,18 +74,18 @@ void Cpu_job::_yield()
 }
 
 
-void Cpu_job::_interrupt(unsigned const cpu_id)
+void Cpu_job::_interrupt(Cpu & cpu)
 {
 	/* determine handling for specific interrupt */
 	unsigned irq_id;
 	if (pic()->take_request(irq_id))
 
 		/* is the interrupt a cpu-local one */
-		if (!_cpu->interrupt(irq_id)) {
+		if (!cpu.interrupt(irq_id)) {
 
 			/* it needs to be a user interrupt */
 			User_irq * irq = User_irq::object(irq_id);
-			if (irq) irq->occurred();
+			if (irq) irq->occurred(cpu);
 			else Genode::warning("Unknown interrupt ", irq_id);
 		}
 
@@ -135,6 +135,10 @@ Cpu::Idle_thread::Idle_thread(Cpu * const cpu)
 	Thread::_pd = core_pd();
 }
 
+void Cpu::Timer_irq::occurred(Cpu & cpu)
+{
+	cpu.schedule();
+}
 
 void Cpu::set_timeout(Timeout * const timeout, time_t const duration_us) {
 	_timer.set_timeout(timeout, _timer.us_to_ticks(duration_us)); }
@@ -158,30 +162,23 @@ bool Cpu::interrupt(unsigned const irq_id)
 {
 	Irq * const irq = object(irq_id);
 	if (!irq) return false;
-	irq->occurred();
+	irq->occurred(*this);
 	return true;
 }
 
 
-Cpu_job & Cpu::schedule()
+void Cpu::schedule()
 {
 	/* update scheduler */
 	time_t quota = _timer.update_time();
-	Job & old_job = scheduled_job();
-	old_job.exception(*this);
 	_timer.process_timeouts();
 	_scheduler.update(quota);
 
-	/* get new job */
-	Job & new_job = scheduled_job();
 	quota = _scheduler.head_quota();
 
 	_timer.set_timeout(this, quota);
 
 	_timer.schedule_timeout();
-
-	/* return new job */
-	return new_job;
 }
 
 
@@ -198,7 +195,8 @@ Cpu::Cpu(unsigned const id)
 :
 	_id(id), _timer(_id),
 	_scheduler(&_idle, _quota(), _fill()), _idle(this),
-	_ipi_irq(*this), _timer_irq(_timer.interrupt_id(), *this)
+	_ipi_irq(Kernel::Pic::IPI, *this),
+	_timer_irq(_timer.interrupt_id(), *this)
 { }
 
 

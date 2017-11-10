@@ -56,14 +56,9 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 			 **  Irq interface  **
 			 *********************/
 
-			void occurred();
+			void occurred(Cpu &);
 
-			/**
-			 * Constructor
-			 *
-			 * \param p  interrupt pool this irq shall reside in
-			 */
-			Ipi(Irq::Pool &p);
+			using Irq::Irq;
 
 			/**
 			 * Trigger the ipi
@@ -73,6 +68,12 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 			void trigger(unsigned const cpu_id);
 		};
 
+		struct Timer_irq : Irq
+		{
+			using Irq::Irq;
+
+			void occurred(Cpu &);
+		};
 
 		struct Idle_thread : Kernel::Thread
 		{
@@ -88,7 +89,7 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 		Cpu_scheduler  _scheduler;
 		Idle_thread    _idle;
 		Ipi            _ipi_irq;
-		Irq            _timer_irq; /* timer IRQ implemented as empty event */
+		Timer_irq      _timer_irq;
 
 		unsigned _quota() const { return _timer.us_to_ticks(cpu_quota_us); }
 		unsigned _fill() const  { return _timer.us_to_ticks(cpu_fill_us); }
@@ -130,9 +131,9 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 		void schedule(Job * const job);
 
 		/**
-		 * Return the job that should be executed at next
+		 * Schedule the next job that should be executed
 		 */
-		Cpu_job& schedule();
+		void schedule();
 
 		void set_timeout(Timeout * const timeout, time_t const duration_us);
 

@@ -42,7 +42,7 @@ void Thread::exception(Cpu & cpu)
 	}
 	if (regs->trapno >= Cpu_state::INTERRUPTS_START &&
 	    regs->trapno <= Cpu_state::INTERRUPTS_END) {
-		_interrupt(cpu.id());
+		_interrupt(cpu);
 		return;
 	}
 	Genode::warning(*this, ": triggered unknown exception ", regs->trapno,

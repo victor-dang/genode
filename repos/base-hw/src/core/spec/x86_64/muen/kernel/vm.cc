@@ -45,7 +45,7 @@ void Kernel::Vm::exception(Cpu & cpu)
 	if (_state->trapno >= Genode::Cpu_state::INTERRUPTS_START &&
 		_state->trapno <= Genode::Cpu_state::INTERRUPTS_END) {
 		pic()->irq_occurred(_state->trapno);
-		_interrupt(cpu.id());
+		_interrupt(cpu);
 		_context->submit(1);
 		return;
 	}

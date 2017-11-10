@@ -142,6 +142,7 @@ void Thread::_become_active()
 {
 	if (_state != ACTIVE && !_paused) { _activate_used_shares(); }
 	_state = ACTIVE;
+	_cpu->schedule();
 }
 
 
@@ -149,6 +150,7 @@ void Thread::_become_inactive(State const s)
 {
 	if (_state == ACTIVE && !_paused) { _deactivate_used_shares(); }
 	_state = s;
+	_cpu->schedule();
 }
 
 

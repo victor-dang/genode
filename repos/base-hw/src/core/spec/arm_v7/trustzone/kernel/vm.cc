@@ -36,7 +36,7 @@ void Vm::exception(Cpu & cpu)
 	switch(_state->cpu_exception) {
 	case Genode::Cpu_state::INTERRUPT_REQUEST:
 	case Genode::Cpu_state::FAST_INTERRUPT_REQUEST:
-		_interrupt(cpu.id());
+		_interrupt(cpu);
 		return;
 	case Genode::Cpu_state::DATA_ABORT:
 		_state->dfar = Cpu::Dfar::read();

@@ -31,7 +31,7 @@ void Thread::exception(Cpu & cpu)
 		return;
 	case Cpu::Context::INTERRUPT_REQUEST:
 	case Cpu::Context::FAST_INTERRUPT_REQUEST:
-		_interrupt(cpu.id());
+		_interrupt(cpu);
 		return;
 	case Cpu::Context::UNDEFINED_INSTRUCTION:
 		if (_cpu->retry_undefined_instr(*regs)) { return; }

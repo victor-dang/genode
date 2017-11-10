@@ -75,9 +75,9 @@ class Kernel::Cpu_job : public Cpu_share
 		Cpu * _cpu;
 
 		/**
-		 * Handle interrupt exception that occured during execution on CPU 'id'
+		 * Handle interrupt exception that occured during execution on CPU 'cpu'
 		 */
-		void _interrupt(unsigned const id);
+		void _interrupt(Cpu & cpu);
 
 		/**
 		 * Activate our own CPU-share

@@ -28,7 +28,8 @@ extern "C" void kernel()
 		Lock::Guard guard(data_lock());
 
 		cpu = cpu_pool()->cpu(Cpu::executing_id());
-		new_job = &cpu->schedule();
+		cpu->scheduled_job().exception(*cpu);
+		new_job = &cpu->scheduled_job();
 	}
 
 	new_job->proceed(*cpu);

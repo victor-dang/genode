@@ -21,14 +21,12 @@ extern "C" void kernel()
 	using namespace Kernel;
 
 	Cpu * const cpu = cpu_pool()->cpu(Cpu::executing_id());
-	cpu->schedule().proceed(*cpu);
+	cpu->scheduled_job().exception(*cpu);
+	cpu->scheduled_job().proceed(*cpu);
 }
 
 
-void Kernel::Cpu::Ipi::occurred() { }
+void Kernel::Cpu::Ipi::occurred(Cpu &) { }
 
 
 void Kernel::Cpu::Ipi::trigger(unsigned const cpu_id) { }
-
-
-Kernel::Cpu::Ipi::Ipi(Kernel::Irq::Pool &p) : Kernel::Irq(Kernel::Pic::IPI, p) { }

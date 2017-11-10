@@ -47,7 +47,7 @@ Cpu_domain_update_list & cpu_domain_update_list() {
 
 
 
-void Cpu::Ipi::occurred()
+void Cpu::Ipi::occurred(Cpu &)
 {
 	cpu_domain_update_list().do_each();
 	pending = false;
@@ -61,9 +61,6 @@ void Cpu::Ipi::trigger(unsigned const cpu_id)
 	pic()->send_ipi(cpu_id);
 	pending = true;
 }
-
-
-Cpu::Ipi::Ipi(Irq::Pool &p) : Irq(Pic::IPI, p) { }
 
 
 /***********************

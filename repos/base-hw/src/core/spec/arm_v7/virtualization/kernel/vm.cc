@@ -61,9 +61,9 @@ struct Kernel::Vm_irq : Kernel::Irq
 	/**
 	 * A VM interrupt gets injected into the VM scheduled on the current CPU
 	 */
-	void occurred()
+	void occurred(Cpu & cpu)
 	{
-		Cpu_job & job = cpu_pool()->executing_cpu()->scheduled_job();
+		Cpu_job & job = cpu.scheduled_job();
 		Vm *vm = dynamic_cast<Vm*>(&job);
 		if (!vm)
 			Genode::error("VM timer interrupt while VM is not runnning!");
@@ -235,7 +235,7 @@ void Kernel::Vm::exception(Cpu & cpu)
 	case Genode::Cpu_state::INTERRUPT_REQUEST:
 	case Genode::Cpu_state::FAST_INTERRUPT_REQUEST:
 		_state->gic_irq = Board::VT_MAINTAINANCE_IRQ;
-		_interrupt(cpu.id());
+		_interrupt(cpu);
 		break;
 	default:
 		pause();

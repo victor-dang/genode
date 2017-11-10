@@ -27,6 +27,8 @@
 
 namespace Kernel
 {
+	class Cpu;
+
 	/**
 	 * Kernel back-end interface of an interrupt
 	 */
@@ -82,7 +84,7 @@ class Kernel::Irq : public Genode::Avl_node<Irq>
 		/**
 		 * Handle occurence of the interrupt
 		 */
-		virtual void occurred() { }
+		virtual void occurred(Cpu & cpu) { }
 
 		/**
 		 * Prevent interrupt from occurring
@@ -143,7 +145,7 @@ class Kernel::User_irq : public Kernel::Irq, public Kernel::Object
 		/**
 		 * Handle occurence of the interrupt
 		 */
-		void occurred()
+		void occurred(Cpu &)
 		{
 			_context.submit(1);
 			disable();
