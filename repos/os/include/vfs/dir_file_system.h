@@ -537,6 +537,41 @@ class Vfs::Dir_file_system : public File_system
 			return OPEN_ERR_UNACCESSIBLE;
 		}
 
+		/**
+		 * Call 'opendir()' on each file system and store handles in
+		 * a registry.
+		 */
+		Opendir_result open_composite_dirs(char const *sub_path,
+		                                   Dir_vfs_handle &dir_vfs_handle)
+		{
+			Opendir_result result = OPENDIR_OK;
+			try {
+				for (File_system *fs = _first_file_system; (fs && result == OPENDIR_OK); fs = fs->next) {
+					Vfs_handle *sub_dir_handle = nullptr;
+
+					Opendir_result r = fs->opendir(
+						sub_path, false, &sub_dir_handle, dir_vfs_handle.alloc());
+
+					switch (r) {
+					case OPENDIR_OK:
+						break;
+					case OPENDIR_ERR_LOOKUP_FAILED:
+						continue;
+					default:
+						result = r; /* loop will break */
+						continue;
+					}
+
+					new (dir_vfs_handle.alloc())
+						Dir_vfs_handle::Subdir_handle_element(
+							dir_vfs_handle.subdir_handle_registry, *sub_dir_handle);
+				}
+			}
+			catch (Genode::Out_of_ram)  { return OPENDIR_ERR_OUT_OF_RAM; }
+			catch (Genode::Out_of_caps) { return OPENDIR_ERR_OUT_OF_CAPS; }
+			return result;
+		}
+
 		Opendir_result opendir(char const *path, bool create,
 		                       Vfs_handle **out_handle, Allocator &alloc) override
 		{
@@ -546,9 +581,16 @@ class Vfs::Dir_file_system : public File_system
 			if (strcmp(path, "/") == 0) {
 				if (create)
 					return OPENDIR_ERR_PERMISSION_DENIED;
-				*out_handle = new (alloc) Dir_vfs_handle(*this, *this, alloc,
-				                                         path);
-				return OPENDIR_OK;
+				Dir_vfs_handle *root_handle = new (alloc)
+					Dir_vfs_handle(*this, *this, alloc, path);
+				result = open_composite_dirs("/", *root_handle);
+				if (result == OPENDIR_OK) {
+					*out_handle = root_handle;
+				} else {
+					/* close the root handle and the rest will follow */
+					close(root_handle);
+				}
+				return result;
 			}
 
 			char const *sub_path = _sub_path(path);
@@ -564,7 +606,7 @@ class Vfs::Dir_file_system : public File_system
 						fs.opendir(path, true, &tmp_handle, alloc);
 					if (opendir_result == OPENDIR_OK)
 						fs.close(tmp_handle);
-					return opendir_result;
+					return opendir_result; /* return from lambda */
 				};
 
 				Opendir_result opendir_result =
@@ -579,42 +621,13 @@ class Vfs::Dir_file_system : public File_system
 
 			Dir_vfs_handle *dir_vfs_handle = new (alloc)
 				Dir_vfs_handle(*this, *this, alloc, path);
-			*out_handle = dir_vfs_handle;
 
-			/*
-			 * Call 'opendir()' on each file system and store handles in
-			 * a registry.
-			 */
-
-			try {
-				for (File_system *fs = _first_file_system; (fs && result == OPENDIR_OK); fs = fs->next) {
-					Vfs_handle *sub_dir_handle = nullptr;
-
-					Opendir_result r = fs->opendir(
-						sub_path, false, &sub_dir_handle, alloc);
-
-					switch (r) {
-					case OPENDIR_OK:
-						break;
-					case OPENDIR_ERR_LOOKUP_FAILED:
-						continue;
-					default:
-						result = r;
-						continue;
-					}
-
-					new (alloc)
-						Dir_vfs_handle::Subdir_handle_element(
-							dir_vfs_handle->subdir_handle_registry,
-							*sub_dir_handle);
-				}
-			}
-			catch (Genode::Out_of_ram) { result = OPENDIR_ERR_OUT_OF_RAM; }
-			catch (Genode::Out_of_caps) { result = OPENDIR_ERR_OUT_OF_CAPS; }
-
-			if (result != OPENDIR_OK) {
+			result = open_composite_dirs(sub_path, *dir_vfs_handle);
+			if (result == OPENDIR_OK) {
+				*out_handle = dir_vfs_handle;
+			} else {
+				/* close the master handle and the rest will follow */
 				close(dir_vfs_handle);
-				*out_handle = nullptr;
 			}
 			return result;
 		}
