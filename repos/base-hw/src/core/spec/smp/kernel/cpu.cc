@@ -47,10 +47,11 @@ Cpu_domain_update_list & cpu_domain_update_list() {
 
 
 
-void Cpu::Ipi::occurred(Cpu &)
+void Cpu::Ipi::occurred(Cpu & cpu)
 {
 	cpu_domain_update_list().do_each();
 	pending = false;
+	cpu.schedule();
 }
 
 

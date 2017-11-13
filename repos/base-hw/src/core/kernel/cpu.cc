@@ -81,7 +81,7 @@ void Cpu_job::_interrupt(Cpu & cpu)
 	if (pic()->take_request(irq_id))
 
 		/* is the interrupt a cpu-local one */
-		if (!cpu.interrupt(irq_id)) {
+		if (!_cpu->interrupt(irq_id)) {
 
 			/* it needs to be a user interrupt */
 			User_irq * irq = User_irq::object(irq_id);
@@ -169,6 +169,11 @@ bool Cpu::interrupt(unsigned const irq_id)
 
 void Cpu::schedule()
 {
+	if (executing_id() != _id) {
+		trigger_ip_interrupt();
+		return;
+	}
+
 	/* update scheduler */
 	time_t quota = _timer.update_time();
 	_timer.process_timeouts();
