@@ -40,11 +40,6 @@ install_config {
 		<provides><service name="Timer"/></provides>
 	</start>
 
-	<start name="top">
-		<resource name="RAM" quantum="2M"/>
-		<config period_ms="5000"/>
-	</start>
-
 	<start name="trace_subject_reporter" >
 		<resource name="RAM" quantum="24M"/>
 		<route>
@@ -175,7 +170,7 @@ install_config {
 	</start>
 
 	<start name="drivers" caps="2500" priority="-1">
-		<resource name="RAM" quantum="64M" constrain_phys="yes"/>
+		<resource name="RAM" quantum="72M" constrain_phys="yes"/>
 		<binary name="init"/>
 		<route>
 			<service name="LOG"> <child name="log"/> </service>
@@ -358,9 +353,9 @@ file copy -force [genode_dir]/repos/os/recipes/raw/drivers_interactive-pc/input_
 # XXX remove
 #
 
-build { noux-pkg/bash drivers/wifi lib/vfs/jitterentropy }
+build { noux-pkg/bash drivers/wifi lib/vfs/jitterentropy  app/driver_manager }
 
-append boot_modules { bash.tar }
+append boot_modules { bash.tar driver_manager }
 
 append boot_modules {
 	iwlwifi-6000-4.ucode
