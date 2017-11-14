@@ -84,6 +84,7 @@ void Thread::_await_signal(Signal_receiver * const receiver)
 
 void Thread::_receive_signal(void * const base, size_t const size)
 {
+	Genode::raw(*this, " ", reinterpret_cast<Genode::Signal::Data*>(base)->context);
 	assert(_state == AWAITS_SIGNAL);
 	Genode::memcpy(utcb()->data(), base, size);
 	_become_active();
@@ -261,6 +262,7 @@ void Thread::_call_restart_thread()
 		_die();
 		return;
 	}
+	Genode::raw(*this, " restarts ", *thread);
 	user_arg_0(thread->_restart());
 }
 
@@ -641,6 +643,7 @@ void Thread::_mmu_exception()
 	Cpu::mmu_fault(*regs, _fault);
 	_fault.ip = regs->ip;
 
+	Genode::raw("MMU fault: ", *this, " ", (void*)_pager->_imprint);
 	if (_fault.type == Thread_fault::UNKNOWN) {
 		Genode::error(*this, " raised unhandled MMU fault ", _fault);
 		return;

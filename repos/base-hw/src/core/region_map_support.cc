@@ -50,6 +50,7 @@ void Pager_entrypoint::entry()
 			continue;
 		}
 
+		Genode::log(":resolv ", po, " ", pt->pd()->label(), " -> ", pt->label());
 		_fault = pt->kernel_object()->fault();
 
 		/* try to resolve fault directly via local region managers */

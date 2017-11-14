@@ -66,7 +66,7 @@ namespace Genode {
  */
 class Genode::Signal
 {
-	private:
+	public:
 
 		struct Data
 		{

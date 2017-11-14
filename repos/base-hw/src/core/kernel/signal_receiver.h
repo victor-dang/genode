@@ -136,7 +136,7 @@ class Kernel::Signal_context : public Kernel::Object
 	friend class Signal_receiver;
 	friend class Signal_context_killer;
 
-	private:
+	public:
 
 		typedef Genode::Fifo_element<Signal_context> Fifo_element;
 

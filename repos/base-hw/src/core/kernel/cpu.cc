@@ -169,10 +169,7 @@ bool Cpu::interrupt(unsigned const irq_id)
 
 void Cpu::schedule()
 {
-	if (executing_id() != _id) {
-		trigger_ip_interrupt();
-		return;
-	}
+	if (executing_id() != _id) return;
 
 	/* update scheduler */
 	time_t quota = _timer.update_time();
