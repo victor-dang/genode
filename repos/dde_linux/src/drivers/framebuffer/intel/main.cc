@@ -115,7 +115,9 @@ static void run_linux(void * m)
 	main->config.sigh(pa.sd);
 
 	while (1) {
+		Genode::warning("block again");
 		Lx::scheduler().current()->block_and_schedule();
+		Genode::warning("config has changed");
 		main->root.session.config_changed();
 	}
 }

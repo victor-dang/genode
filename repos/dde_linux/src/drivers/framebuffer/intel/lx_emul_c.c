@@ -86,6 +86,7 @@ void lx_c_set_mode(struct drm_device * dev, struct drm_connector * connector,
 	struct drm_crtc *crtc = NULL;
 	struct drm_encoder *encoder = connector->encoder;
 
+	printk("Mode for the connector %s is %p\n", connector->name, mode);
 	if (!mode) return;
 
 	if (!encoder) {
@@ -109,7 +110,7 @@ void lx_c_set_mode(struct drm_device * dev, struct drm_connector * connector,
 	}
 
 	if (!encoder) {
-		DRM_DEBUG("Found no encoder for the connector %s\n", connector->name);
+		printk("Found no encoder for the connector %s\n", connector->name);
 		return;
 	}
 
@@ -126,11 +127,11 @@ void lx_c_set_mode(struct drm_device * dev, struct drm_connector * connector,
 	}
 
 	if (!crtc) {
-		DRM_DEBUG("Found no crtc for the connector %s\n", connector->name);
+		printk("Found no crtc for the connector %s\n", connector->name);
 		return;
 	}
 
-	DRM_DEBUG("set mode %s for connector %s\n", mode->name, connector->name);
+	printk("set mode %s for connector %s\n", mode->name, connector->name);
 
 	struct drm_mode_set set;
 	set.crtc = crtc;

@@ -108,12 +108,14 @@ class Framebuffer::Session_component : public Genode::Rpc_object<Session>
 			_config.update();
 			if (!_config.valid()) return;
 
+			Genode::log("set driver polling");
 			_driver.set_polling(_polling_from_config());
 
 			_in_mode_change = true;
 
 			_driver.update_mode();
 
+			Genode::log("send mode change signal");
 			if (_mode_sigh.valid())
 				Genode::Signal_transmitter(_mode_sigh).submit();
 		}

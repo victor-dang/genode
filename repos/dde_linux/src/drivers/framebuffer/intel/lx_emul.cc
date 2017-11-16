@@ -88,6 +88,7 @@ Framebuffer::Driver::_preferred_mode(drm_connector *connector)
 	/* try to read configuration for connector */
 	try {
 		Xml_node config = _session.config();
+		Genode::log("config is ", config);
 		Xml_node xn = config.sub_node();
 		for (unsigned i = 0; i < config.num_sub_nodes(); xn = xn.next()) {
 			if (!xn.has_type("connector"))
@@ -99,6 +100,7 @@ Framebuffer::Driver::_preferred_mode(drm_connector *connector)
 				continue;
 
 			bool enabled = xn.attribute_value("enabled", true);
+			Genode::warning("connector ", con_policy, " is ", enabled);
 			if (!enabled)
 				return nullptr;
 
@@ -117,6 +119,7 @@ Framebuffer::Driver::_preferred_mode(drm_connector *connector)
 		};
 		}
 	} catch (...) {
+		Genode::error("no config");
 		/**
 		 * If no config is given, we take the most wide mode of a
 		 * connector as long as it is connected at all
