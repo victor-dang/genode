@@ -74,7 +74,7 @@ static SDL_Surface *resize_screen(SDL_Surface * const screen, int w, int h)
 	SDL_Surface *nscreen = set_video_mode(w, h);
 	if (nscreen == nullptr) {
 		printf("Error: could not resize %dx%d -> %dx%d: %s\n",
-		       oldw, oldh, SDL_GetError());
+		       oldw, oldh, w, h, SDL_GetError());
 		return nullptr;
 	}
 
