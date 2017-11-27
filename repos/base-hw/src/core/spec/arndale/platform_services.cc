@@ -23,6 +23,8 @@
 #include <vm_root.h>
 #include <platform.h>
 
+#include <kernel/cpu.h>
+
 extern Genode::addr_t hypervisor_exception_vector;
 
 /*
@@ -40,4 +42,28 @@ void Genode::platform_add_local_services(Rpc_entrypoint *ep,
 
 	static Vm_root vm_root(ep, sh);
 	static Core_service<Vm_session_component> vm_service(*services, vm_root);
+}
+
+
+Board::Serial::Serial(Genode::addr_t mmio, unsigned c, unsigned b)
+: Genode::Exynos_uart(mmio, c, b),
+  Kernel::Irq(Board::UART_2_IRQ, *Kernel::cpu_pool()->executing_cpu())
+{
+	Genode::Exynos_uart::_rx_enable();
+	Kernel::Irq::enable();
+}
+
+
+void Board::Serial::occurred()
+{
+	if (!_rx_avail()) return;
+	Genode::raw("pressed: ", _rx_char());
+
+	Genode::raw("Dump all thread states");
+
+	for (Kernel::Thread * thread = Kernel::thread_list().first(); thread;
+		 thread = thread->Genode::List<Kernel::Thread>::Element::next())
+		Genode::raw(*thread);
+
+	Genode::raw("Dump finished");
 }

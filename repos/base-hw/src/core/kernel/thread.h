@@ -27,6 +27,8 @@ namespace Kernel
 	struct Thread_fault;
 	class Thread;
 	class Core_thread;
+
+	extern Genode::List<Thread>& thread_list();
 }
 
 
@@ -49,7 +51,7 @@ class Kernel::Thread
 :
 	public Kernel::Object, public Cpu_job, public Cpu_domain_update,
 	public Ipc_node, public Signal_context_killer, public Signal_handler,
-	private Timeout
+	private Timeout, public Genode::List<Thread>::Element
 {
 	protected:
 
@@ -253,6 +255,7 @@ class Kernel::Thread
 		Thread(char const * const label)
 		: Thread(Cpu_priority::MIN, 0, label, true) { }
 
+		~Thread();
 
 		/**************************
 		 ** Support for syscalls **

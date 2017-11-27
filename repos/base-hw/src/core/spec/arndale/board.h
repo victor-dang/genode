@@ -20,10 +20,18 @@
 
 #include <hw/spec/arm/cortex_a15.h>
 
+#include <kernel/irq.h>
+
 namespace Board {
 	using namespace Arndale;
 	using Cpu_mmio = Hw::Cortex_a15_mmio<IRQ_CONTROLLER_BASE>;
-	using Serial = Genode::Exynos_uart;
+
+	struct Serial : Genode::Exynos_uart, Kernel::Irq
+	{
+		Serial(Genode::addr_t mmio, unsigned c, unsigned b);
+
+		void occurred();
+	};
 
 	enum {
 		UART_BASE  = UART_2_MMIO_BASE,

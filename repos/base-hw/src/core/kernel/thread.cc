@@ -656,7 +656,10 @@ Thread::Thread(unsigned const priority, unsigned const quota,
                char const * const label, bool core)
 :
 	Cpu_job(priority, quota), _state(AWAITS_START),
-	_signal_receiver(0), _label(label), _core(core), regs(core) { }
+	_signal_receiver(0), _label(label), _core(core), regs(core) { thread_list().insert(this); }
+
+
+Thread::~Thread() { thread_list().remove(this); }
 
 
 void Thread::print(Genode::Output &out) const
@@ -664,6 +667,16 @@ void Thread::print(Genode::Output &out) const
 	Genode::print(out, (_pd) ? _pd->platform_pd()->label() : "?");
 	Genode::print(out, " -> ");
 	Genode::print(out, label());
+	switch (_state) {
+	case ACTIVE                    : Genode::print(out, " (state=*active*) "); break;
+	case AWAITS_START              : Genode::print(out, " (state=start) "); break;
+	case AWAITS_IPC                : Genode::print(out, " (state=ipc) "); break;
+	case AWAITS_RESTART            : Genode::print(out, " (state=restart) "); break;
+	case AWAITS_SIGNAL             : Genode::print(out, " (state=signal) "); break;
+	case AWAITS_SIGNAL_CONTEXT_KILL: Genode::print(out, " (state=signal_kill) "); break;
+	case DEAD                      : Genode::print(out, " (state=dead) "); break;
+	};
+	Genode::print(out, "ip=", (void*)regs->ip);
 }
 
 
@@ -706,4 +719,11 @@ Thread & Core_thread::singleton()
 {
 	static Core_thread ct;
 	return ct;
+}
+
+
+Genode::List<Thread>& Kernel::thread_list()
+{
+	static Genode::List<Thread> list;
+	return list;
 }
