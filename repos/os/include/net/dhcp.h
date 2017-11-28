@@ -139,26 +139,27 @@ class Net::Dhcp_packet
 			public:
 
 				enum class Code : Genode::uint8_t {
-					INVALID        = 0,
-					SUBNET_MASK    = 1,
-					ROUTER         = 3,
-					DNS_SERVER     = 6,
-					BROADCAST_ADDR = 28,
-					REQ_IP_ADDR    = 50,
-					IP_LEASE_TIME  = 51,
-					OPT_OVERLOAD   = 52,
-					MSG_TYPE       = 53,
-					SERVER         = 54,
-					REQ_PARAMETER  = 55,
-					MESSAGE        = 56,
-					MAX_MSG_SZ     = 57,
-					RENEWAL        = 58,
-					REBINDING      = 59,
-					VENDOR         = 60,
-					CLI_ID         = 61,
-					TFTP_SRV_NAME  = 66,
-					BOOT_FILE      = 67,
-					END            = 255,
+					INVALID                = 0,
+					SUBNET_MASK            = 1,
+					ROUTER                 = 3,
+					DNS_SERVER             = 6,
+					BROADCAST_ADDR         = 28,
+					TCP_KEEPALIVE_INTERVAL = 38,
+					REQ_IP_ADDR            = 50,
+					IP_LEASE_TIME          = 51,
+					OPT_OVERLOAD           = 52,
+					MSG_TYPE               = 53,
+					SERVER                 = 54,
+					REQ_PARAMETER          = 55,
+					MESSAGE                = 56,
+					MAX_MSG_SZ             = 57,
+					RENEWAL                = 58,
+					REBINDING              = 59,
+					VENDOR                 = 60,
+					CLI_ID                 = 61,
+					TFTP_SRV_NAME          = 66,
+					BOOT_FILE              = 67,
+					END                    = 255,
 				};
 
 				Option(Code code, Genode::uint8_t len)
@@ -291,6 +292,15 @@ class Net::Dhcp_packet
 
 			Max_msg_size(Genode::uint16_t size)
 			: Option_tpl(CODE, host_to_big_endian(size)) { }
+		};
+
+
+		struct Tcp_keepalive_interval : Option_tpl<Genode::uint32_t>
+		{
+			static constexpr Code CODE = Code::TCP_KEEPALIVE_INTERVAL;
+
+			Tcp_keepalive_interval(Genode::uint32_t seconds)
+			: Option_tpl(CODE, host_to_big_endian(seconds)) { }
 		};
 
 

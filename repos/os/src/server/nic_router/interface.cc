@@ -380,6 +380,7 @@ void Interface::_send_dhcp_reply(Dhcp_server               const &dhcp_srv,
 	dhcp_opts.append_option<Dhcp_packet::Ip_lease_time>(dhcp_srv.ip_lease_time().value / 1000 / 1000);
 	dhcp_opts.append_option<Dhcp_packet::Subnet_mask>(_ip_config().interface.subnet_mask());
 	dhcp_opts.append_option<Dhcp_packet::Router_ipv4>(_router_ip());
+	dhcp_opts.append_option<Dhcp_packet::Tcp_keepalive_interval>(_config().tcp_idle_timeout().value / 1000 / 1000 / 2);
 	if (dhcp_srv.dns_server().valid()) {
 		dhcp_opts.append_option<Dhcp_packet::Dns_server_ipv4>(dhcp_srv.dns_server()); }
 	dhcp_opts.append_option<Dhcp_packet::Broadcast_addr>(_ip_config().interface.broadcast_address());
