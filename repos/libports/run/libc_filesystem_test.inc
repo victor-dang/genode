@@ -81,7 +81,7 @@ append config {
 		<config>
 			<iterations value="1"/>}
 append_if [have_include "power_on/qemu"] config {
-			<write-read size="1M" buffer_size="8K"/>}
+			<write-read rounds="2" size="1M" buffer_size="8K"/>}
 append config {
 			<libc stdout="/dev/log" stderr="/dev/log"/>
 			<vfs>
