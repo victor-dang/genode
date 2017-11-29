@@ -97,23 +97,11 @@ void Platform_thread::pause()
 	                      &_pager_obj->state.sp, &flags);
 
 	/*
-	 * The thread state ("ready") is encoded in the lowest bit of the flags.
+	 * Wait until the pager thread got an exception from
+	 * the requested thread, and stored its thread state
 	 */
-	bool in_syscall = (flags & 1) == 0;
-	_pager_obj->state.lock.unlock();
-
-	/**
-	 * Check whether the thread was in ongoing ipc, if so it won't raise
-	 * an exception before ipc is completed.
-	 */
-	if (!in_syscall) {
-		/*
-		 * Wait until the pager thread got an exception from
-		 * the requested thread, and stored its thread state
-		 */
-		while (exc == _pager_obj->state.exceptions && !_pager_obj->state.in_exception)
-			l4_thread_switch(_thread.local.data()->kcap());
-	}
+	while (exc == _pager_obj->state.exceptions && !_pager_obj->state.in_exception)
+		l4_thread_switch(_thread.local.data()->kcap());
 }
 
 
