@@ -94,8 +94,7 @@ void Thread::_send_request_succeeded()
 {
 	assert(_state == AWAITS_IPC);
 	user_arg_0(0);
-	_state = ACTIVE;
-	if (!Cpu_job::own_share_active()) { _activate_used_shares(); }
+	_become_active();
 }
 
 
@@ -103,8 +102,7 @@ void Thread::_send_request_failed()
 {
 	assert(_state == AWAITS_IPC);
 	user_arg_0(-1);
-	_state = ACTIVE;
-	if (!Cpu_job::own_share_active()) { _activate_used_shares(); }
+	_become_active();
 }
 
 
@@ -133,6 +131,8 @@ void Thread::_deactivate_used_shares()
 
 void Thread::_activate_used_shares()
 {
+	if (Cpu_job::own_share_active()) return;
+
 	Cpu_job::_activate_own_share();
 	Ipc_node::for_each_helper([&] (Ipc_node * const h) {
 		static_cast<Thread *>(h)->_activate_used_shares(); });
