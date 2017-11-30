@@ -13,37 +13,40 @@
 
 #include <base/log.h>
 #include <hw/assert.h>
-#include <kernel/cpu_scheduler.h>
+#include <kernel/scheduler.h>
 
 using namespace Kernel;
 
 
-void Cpu_scheduler::_reset(Claim * const c) {
+void Scheduler::_reset(Claim * const c) {
 	_share(c)->_claim = _share(c)->_quota; }
 
 
-void Cpu_scheduler::_reset_claims(unsigned const p)
+void Scheduler::_reset_claims(unsigned const p)
 {
 	_rcl[p].for_each([&] (Claim * const c) { _reset(c); });
 	_ucl[p].for_each([&] (Claim * const c) { _reset(c); });
 }
 
 
-void Cpu_scheduler::_next_round()
+void Scheduler::_next_round()
 {
 	_residual = _quota;
-	_for_each_prio([&] (unsigned const p) { _reset_claims(p); });
+	for (unsigned p = MAX_PRIORITY;; p--) {
+		_reset_claims(p);
+		if (p == MIN_PRIORITY) return;
+	}
 }
 
 
-void Cpu_scheduler::_consumed(unsigned const q)
+void Scheduler::_consumed(unsigned const q)
 {
 	if (_residual > q) { _residual -= q; }
 	else { _next_round(); }
 }
 
 
-void Cpu_scheduler::_set_head(Share * const s, unsigned const q, bool const c)
+void Scheduler::_set_head(Context * const s, unsigned const q, bool const c)
 {
 	_head_quota = q;
 	_head_claims = c;
@@ -51,14 +54,14 @@ void Cpu_scheduler::_set_head(Share * const s, unsigned const q, bool const c)
 }
 
 
-void Cpu_scheduler::_next_fill()
+void Scheduler::_next_fill()
 {
 	_head->_fill = _fill;
 	_fills.head_to_tail();
 }
 
 
-void Cpu_scheduler::_head_claimed(unsigned const r)
+void Scheduler::_head_claimed(unsigned const r)
 {
 	if (!_head->_quota) { return; }
 	_head->_claim = r > _head->_quota ? _head->_quota : r;
@@ -67,7 +70,7 @@ void Cpu_scheduler::_head_claimed(unsigned const r)
 }
 
 
-void Cpu_scheduler::_head_filled(unsigned const r)
+void Scheduler::_head_filled(unsigned const r)
 {
 	if (_fills.head() != _head) { return; }
 	if (r) { _head->_fill = r; }
@@ -75,29 +78,30 @@ void Cpu_scheduler::_head_filled(unsigned const r)
 }
 
 
-bool Cpu_scheduler::_claim_for_head()
+bool Scheduler::_claim_for_head()
 {
-	for (signed p = Prio::MAX; p > Prio::MIN - 1; p--) {
-		Share * const s = _share(_rcl[p].head());
-		if (!s) { continue; }
-		if (!s->_claim) { continue; }
-		_set_head(s, s->_claim, 1);
-		return 1;
+	for (unsigned p = MAX_PRIORITY;; p--) {
+		Context * const s = _share(_rcl[p].head());
+		if (s && s->_claim) {
+			_set_head(s, s->_claim, 1);
+			return true;
+		}
+		if (p == MIN_PRIORITY) break;
 	}
 	return 0;
 }
 
 
-bool Cpu_scheduler::_fill_for_head()
+bool Scheduler::_fill_for_head()
 {
-	Share * const s = _share(_fills.head());
+	Context * const s = _share(_fills.head());
 	if (!s) { return 0; }
 	_set_head(s, s->_fill, 0);
 	return 1;
 }
 
 
-unsigned Cpu_scheduler::_trim_consumption(unsigned & q)
+unsigned Scheduler::_trim_consumption(unsigned & q)
 {
 	q = Genode::min(Genode::min(q, _head_quota), _residual);
 	if (!_head_yields) { return _head_quota - q; }
@@ -106,28 +110,28 @@ unsigned Cpu_scheduler::_trim_consumption(unsigned & q)
 }
 
 
-void Cpu_scheduler::_quota_introduction(Share * const s)
+void Scheduler::_quota_introduction(Context * const s)
 {
 	if (s->_ready) { _rcl[s->_prio].insert_tail(s); }
 	else { _ucl[s->_prio].insert_tail(s); }
 }
 
 
-void Cpu_scheduler::_quota_revokation(Share * const s)
+void Scheduler::_quota_revokation(Context * const s)
 {
 	if (s->_ready) { _rcl[s->_prio].remove(s); }
 	else { _ucl[s->_prio].remove(s); }
 }
 
 
-void Cpu_scheduler::_quota_adaption(Share * const s, unsigned const q)
+void Scheduler::_quota_adaption(Context * const s, unsigned const q)
 {
 	if (q) { if (s->_claim > q) { s->_claim = q; } }
 	else { _quota_revokation(s); }
 }
 
 
-void Cpu_scheduler::update(unsigned q)
+void Scheduler::update(unsigned q)
 {
 	/* do not detract the quota if the head context was removed even now */
 	if (_head) {
@@ -139,17 +143,17 @@ void Cpu_scheduler::update(unsigned q)
 
 	if (_claim_for_head()) { return; }
 	if (_fill_for_head()) { return; }
-	_set_head(_idle, _fill, 0);
+	_set_head(&_idle, _fill, 0);
 }
 
 
-bool Cpu_scheduler::ready_check(Share * const s1)
+bool Scheduler::ready_check(Context * const s1)
 {
 	assert(_head);
 
 	ready(s1);
-	Share * s2 = _head;
-	if (!s1->_claim) { return s2 == _idle; }
+	Context * s2 = _head;
+	if (!s1->_claim) { return s2 == &_idle; }
 	if (!_head_claims) { return 1; }
 	if (s1->_prio != s2->_prio) { return s1->_prio > s2->_prio; }
 	for (; s2 && s2 != s1; s2 = _share(Claim_list::next(s2))) ;
@@ -157,9 +161,9 @@ bool Cpu_scheduler::ready_check(Share * const s1)
 }
 
 
-void Cpu_scheduler::ready(Share * const s)
+void Scheduler::ready(Context * const s)
 {
-	assert(!s->_ready && s != _idle);
+	assert(!s->_ready && s != &_idle);
 
 	s->_ready = 1;
 	s->_fill = _fill;
@@ -171,9 +175,9 @@ void Cpu_scheduler::ready(Share * const s)
 }
 
 
-void Cpu_scheduler::unready(Share * const s)
+void Scheduler::unready(Context * const s)
 {
-	assert(s->_ready && s != _idle);
+	assert(s->_ready && s != &_idle);
 	s->_ready = 0;
 	_fills.remove(s);
 	if (!s->_quota) { return; }
@@ -182,12 +186,12 @@ void Cpu_scheduler::unready(Share * const s)
 }
 
 
-void Cpu_scheduler::yield() { _head_yields = 1; }
+void Scheduler::yield() { _head_yields = 1; }
 
 
-void Cpu_scheduler::remove(Share * const s)
+void Scheduler::remove(Context * const s)
 {
-	assert(s != _idle);
+	assert(s != &_idle);
 
 	if (s == _head) _head = nullptr;
 	if (s->_ready) { _fills.remove(s); }
@@ -197,7 +201,7 @@ void Cpu_scheduler::remove(Share * const s)
 }
 
 
-void Cpu_scheduler::insert(Share * const s)
+void Scheduler::insert(Context * const s)
 {
 	assert(!s->_ready);
 	if (!s->_quota) { return; }
@@ -206,16 +210,16 @@ void Cpu_scheduler::insert(Share * const s)
 }
 
 
-void Cpu_scheduler::quota(Share * const s, unsigned const q)
+void Scheduler::quota(Context * const s, unsigned const q)
 {
-	assert(s != _idle);
+	assert(s != &_idle);
 	if (s->_quota) { _quota_adaption(s, q); }
 	else if (q) { _quota_introduction(s); }
 	s->_quota = q;
 }
 
 
-Cpu_scheduler::Cpu_scheduler(Share * const i, unsigned const q,
+Scheduler::Scheduler(Context & i, unsigned const q,
                              unsigned const f)
 : _idle(i), _head_yields(0), _quota(q), _residual(q), _fill(f)
-{ _set_head(i, f, 0); }
+{ _set_head(&i, f, 0); }

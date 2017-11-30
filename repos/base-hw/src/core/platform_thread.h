@@ -77,7 +77,7 @@ namespace Genode {
 
 		unsigned _priority(unsigned virt_prio)
 		{
-			return Cpu_session::scale_priority(Kernel::Cpu_priority::MAX,
+			return Cpu_session::scale_priority(Kernel::Scheduler::MAX_PRIORITY,
 			                                   virt_prio);
 		}
 

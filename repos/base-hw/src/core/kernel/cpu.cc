@@ -104,13 +104,13 @@ void Cpu_job::affinity(Cpu * const cpu)
 void Cpu_job::quota(unsigned const q)
 {
 	if (_cpu) { _cpu->scheduler()->quota(this, q); }
-	else { Cpu_share::quota(q); }
+	else { Scheduler::Context::quota(q); }
 }
 
 
-Cpu_job::Cpu_job(Cpu_priority const p, unsigned const q)
+Cpu_job::Cpu_job(unsigned const p, unsigned const q)
 :
-	Cpu_share(p, q), _cpu(0) { }
+	Scheduler::Context(p, q), _cpu(0) { }
 
 
 Cpu_job::~Cpu_job()
@@ -197,7 +197,7 @@ addr_t Cpu::stack_start() {
 Cpu::Cpu(unsigned const id)
 :
 	_id(id), _timer(_id),
-	_scheduler(&_idle, _quota(), _fill()), _idle(this),
+	_scheduler(_idle, _quota(), _fill()), _idle(this),
 	_ipi_irq(*this), _timer_irq(_timer.interrupt_id(), *this)
 { }
 

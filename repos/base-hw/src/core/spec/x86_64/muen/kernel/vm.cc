@@ -22,7 +22,7 @@
 
 Kernel::Vm::Vm(void * const state, Kernel::Signal_context * const context,
                void * const)
-: Cpu_job(Cpu_priority::MIN, 0),
+: Cpu_job(Scheduler::MIN_PRIORITY, 0),
   _state((Genode::Vm_state * const) state),
   _context(context),
   _table(nullptr)

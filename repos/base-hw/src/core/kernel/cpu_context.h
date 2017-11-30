@@ -16,7 +16,7 @@
 #define _CORE__KERNEL__CPU_CONTEXT_H_
 
 /* core includes */
-#include <kernel/cpu_scheduler.h>
+#include <kernel/scheduler.h>
 #include <kernel/timer.h>
 
 namespace Kernel
@@ -68,7 +68,7 @@ class Kernel::Cpu_domain_update : public Double_list_item
 		virtual void _cpu_domain_update_unblocks() = 0;
 };
 
-class Kernel::Cpu_job : public Cpu_share
+class Kernel::Cpu_job : public Scheduler::Context
 {
 	protected:
 
@@ -119,7 +119,7 @@ class Kernel::Cpu_job : public Cpu_share
 		/**
 		 * Construct a job with scheduling priority 'p' and time quota 'q'
 		 */
-		Cpu_job(Cpu_priority const p, unsigned const q);
+		Cpu_job(unsigned const p, unsigned const q);
 
 		/**
 		 * Destructor
@@ -139,7 +139,7 @@ class Kernel::Cpu_job : public Cpu_share
 		/**
 		 * Return wether our CPU-share is currently active
 		 */
-		bool own_share_active() { return Cpu_share::ready(); }
+		bool own_share_active() { return Scheduler::Context::ready(); }
 
 		void timeout(Timeout * const timeout, time_t const duration_us);
 

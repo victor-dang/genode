@@ -253,7 +253,7 @@ class Kernel::Thread
 		 * \param label  debugging label
 		 */
 		Thread(char const * const label)
-		: Thread(Cpu_priority::MIN, 0, label, true) { }
+		: Thread(Scheduler::MIN_PRIORITY, 0, label, true) { }
 
 		~Thread();
 

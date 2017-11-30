@@ -85,7 +85,7 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 
 		unsigned const _id;
 		Timer          _timer;
-		Cpu_scheduler  _scheduler;
+		Scheduler      _scheduler;
 		Idle_thread    _idle;
 		Ipi            _ipi_irq;
 		Irq            _timer_irq; /* timer IRQ implemented as empty event */
@@ -151,7 +151,7 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 			return *static_cast<Job *>(_scheduler.head())->helping_sink(); }
 
 		unsigned id() const { return _id; }
-		Cpu_scheduler * scheduler() { return &_scheduler; }
+		Scheduler * scheduler() { return &_scheduler; }
 
 		time_t us_to_ticks(time_t const us) const { return _timer.us_to_ticks(us); };
 

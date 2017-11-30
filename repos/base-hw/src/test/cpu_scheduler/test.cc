@@ -14,7 +14,7 @@
 #include <base/component.h>
 
 /* core includes */
-#include <kernel/cpu_scheduler.h>
+#include <kernel/scheduler.h>
 
 /*
  * Utilities
@@ -22,18 +22,18 @@
 
 using Genode::size_t;
 using Genode::addr_t;
-using Kernel::Cpu_share;
-using Kernel::Cpu_scheduler;
+using Context = Kernel::Scheduler::Context;
+using Kernel::Scheduler;
 
 void * operator new(__SIZE_TYPE__ s, void * p) { return p; }
 
 struct Data
 {
-	Cpu_share idle;
-	Cpu_scheduler scheduler;
-	char shares[9][sizeof(Cpu_share)];
+	Context idle;
+	Scheduler scheduler;
+	char shares[9][sizeof(Context)];
 
-	Data() : idle(0, 0), scheduler(&idle, 1000, 100) { }
+	Data() : idle(0, 0), scheduler(idle, 1000, 100) { }
 };
 
 Data * data()
@@ -54,29 +54,29 @@ unsigned share_id(void * const pointer)
 	addr_t const base = (addr_t)data()->shares;
 	if (address < base || address >= base + sizeof(data()->shares)) {
 		return 0; }
-	return (address - base) / sizeof(Cpu_share) + 1;
+	return (address - base) / sizeof(Context) + 1;
 }
 
-Cpu_share * share(unsigned const id)
+Context * share(unsigned const id)
 {
 	if (!id) { return &data()->idle; }
-	return reinterpret_cast<Cpu_share *>(&data()->shares[id - 1]);
+	return reinterpret_cast<Context *>(&data()->shares[id - 1]);
 }
 
 void create(unsigned const id)
 {
-	Cpu_share * const s = share(id);
+	Context * const s = share(id);
 	void * const p = (void *)s;
 	switch (id) {
-	case 1: new (p) Cpu_share(2, 230); break;
-	case 2: new (p) Cpu_share(0, 170); break;
-	case 3: new (p) Cpu_share(3, 110); break;
-	case 4: new (p) Cpu_share(1,  90); break;
-	case 5: new (p) Cpu_share(3, 120); break;
-	case 6: new (p) Cpu_share(3,   0); break;
-	case 7: new (p) Cpu_share(2, 180); break;
-	case 8: new (p) Cpu_share(2, 100); break;
-	case 9: new (p) Cpu_share(2,   0); break;
+	case 1: new (p) Context(2, 230); break;
+	case 2: new (p) Context(0, 170); break;
+	case 3: new (p) Context(3, 110); break;
+	case 4: new (p) Context(1,  90); break;
+	case 5: new (p) Context(3, 120); break;
+	case 6: new (p) Context(3,   0); break;
+	case 7: new (p) Context(2, 180); break;
+	case 8: new (p) Context(2, 100); break;
+	case 9: new (p) Context(2,   0); break;
 	default: return;
 	}
 	data()->scheduler.insert(s);
@@ -84,9 +84,9 @@ void create(unsigned const id)
 
 void destroy(unsigned const id)
 {
-	Cpu_share * const s = share(id);
+	Context * const s = share(id);
 	data()->scheduler.remove(s);
-	s->~Cpu_share();
+	s->~Context();
 }
 
 unsigned time()
@@ -104,7 +104,7 @@ void update_check(unsigned const l, unsigned const c, unsigned const t,
 		Genode::log("wrong time ", st, " in line ", l);
 		done();
 	}
-	Cpu_share * const hs = data()->scheduler.head();
+	Context * const hs = data()->scheduler.head();
 	unsigned const hq = data()->scheduler.head_quota();
 	if (hs != share(s)) {
 		unsigned const hi = share_id(hs);
