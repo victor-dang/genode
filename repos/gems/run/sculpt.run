@@ -370,6 +370,16 @@ install_config {
 		<provides> <service name="Rtc"/> </provides>
 	</start>
 
+	<start name="log_core_kernel" priority="-3">
+		<resource name="RAM" quantum="10M"/>
+		<config/>
+		<route>
+			<service name="Timer"> <child name="timer"/> </service>
+			<service name="LOG"> <child name="log"/> </service>
+			<any-service> <parent/> </any-service>
+		</route>
+	</start>
+
 	<start name="runtime" caps="50000" priority="-3">
 		<binary name="init"/>
 		<resource name="RAM" quantum="12G"/>
@@ -436,7 +446,10 @@ file copy -force [genode_dir]/repos/os/src/server/input_filter/de.chargen \
 file copy -force [genode_dir]/repos/gems/recipes/raw/drivers_managed-pc/input_filter.config \
                  [run_dir]/genode/input_filter.config
 
-append boot_modules { }
+build { app/log_core_kernel }
+append boot_modules { part_blk }
+
+append boot_modules { log_core_kernel }
 
 build_boot_image $boot_modules
 
