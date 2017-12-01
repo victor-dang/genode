@@ -34,10 +34,9 @@ namespace Kernel
 	class Cpu_domain_update;
 }
 
-class Kernel::Cpu_domain_update : public Double_list_item
+class Kernel::Cpu_domain_update
+: public Genode::List<Kernel::Cpu_domain_update>::Element
 {
-	friend class Cpu_domain_update_list;
-
 	private:
 
 		bool     _pending[NR_OF_CPUS];

@@ -23,9 +23,6 @@ namespace Kernel
 		DEFAULT_TRANSLATION_TABLE_MAX = 128,
 	};
 
-	/* amount of priority bands amongst quota owners in CPU scheduling */
-	constexpr unsigned cpu_priorities = 4;
-
 	/* super period in CPU scheduling and the overall allocatable CPU time */
 	constexpr time_t cpu_quota_us = 1000000;
 

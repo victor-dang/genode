@@ -25,7 +25,7 @@ namespace Kernel
 
 
 class Kernel::Cpu_domain_update_list
-: public Double_list_typed<Cpu_domain_update>
+: public List<Cpu_domain_update>
 {
 	public:
 

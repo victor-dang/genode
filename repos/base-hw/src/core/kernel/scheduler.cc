@@ -17,7 +17,6 @@
 
 using namespace Kernel;
 
-
 void Scheduler::_reset(Claim * const c) {
 	_share(c)->_claim = _share(c)->_quota; }
 
@@ -156,7 +155,7 @@ bool Scheduler::ready_check(Context * const s1)
 	if (!s1->_claim) { return s2 == &_idle; }
 	if (!_head_claims) { return 1; }
 	if (s1->_prio != s2->_prio) { return s1->_prio > s2->_prio; }
-	for (; s2 && s2 != s1; s2 = _share(Claim_list::next(s2))) ;
+	for (; s2 && s2 != s1; s2 = _share(s2->next_claim())) ;
 	return !s2;
 }
 

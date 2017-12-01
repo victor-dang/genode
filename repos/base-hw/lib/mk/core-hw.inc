@@ -51,7 +51,6 @@ SRC_CC += region_map_support.cc
 SRC_CC += pager.cc
 SRC_CC += _main.cc
 SRC_CC += kernel/scheduler.cc
-SRC_CC += kernel/double_list.cc
 SRC_CC += kernel/init.cc
 SRC_CC += kernel/thread.cc
 SRC_CC += kernel/signal_receiver.cc
