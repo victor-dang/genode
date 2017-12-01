@@ -1,5 +1,0 @@
-dhcp_discover_timeout_sec
-dhcp_request_timeout_sec
-dhcp_offer_timeout_sec
-udp_link_timeout_sec
-tcp_link_timeout_sec
