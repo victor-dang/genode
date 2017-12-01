@@ -446,8 +446,8 @@ file copy -force [genode_dir]/repos/os/src/server/input_filter/de.chargen \
 file copy -force [genode_dir]/repos/gems/recipes/raw/drivers_managed-pc/input_filter.config \
                  [run_dir]/genode/input_filter.config
 
-build { app/log_core_kernel }
-append boot_modules { part_blk }
+build { app/log_core_kernel core kernel }
+append boot_modules { core hypervisor }
 
 append boot_modules { log_core_kernel }
 
