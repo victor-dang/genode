@@ -17,23 +17,52 @@
 
 using namespace Kernel;
 
-void Scheduler::_reset(Claim * const c) {
-	_share(c)->_claim = _share(c)->_quota; }
-
-
-void Scheduler::_reset_claims(unsigned const p)
+void Scheduler::Context_list::insert_head(Element & le)
 {
-	_rcl[p].for_each([&] (Claim * const c) { _reset(c); });
-	_ucl[p].for_each([&] (Claim * const c) { _reset(c); });
+	_list.insert(&le);
+	if (!_last) _last = &le;
 }
+
+
+void Scheduler::Context_list::insert_tail(Element & le)
+{
+	_list.insert(&le, _last);
+	_last = &le;
+}
+
+
+void Scheduler::Context_list::remove(Element & le)
+{
+	_list.remove(&le);
+	if (_last != &le) return;
+
+	for (_last = _list.first(); _last && _last->next();
+	     _last = _last->next()) ;
+}
+
+
+void Scheduler::Context_list::to_tail(Element & le)
+{
+	remove(le);
+	insert_tail(le);
+}
+
+
+void Scheduler::Context_list::head_to_tail() {
+	if (_list.first()) to_tail(*_list.first()); }
+
+
+Scheduler::Context * Scheduler::Context_list::head() {
+	return _list.first() ? _list.first()->object() : nullptr; }
 
 
 void Scheduler::_next_round()
 {
 	_residual = _quota;
-	for (unsigned p = MAX_PRIORITY;; p--) {
-		_reset_claims(p);
-		if (p == MIN_PRIORITY) return;
+
+	for (unsigned p = MIN_PRIORITY; p <= MAX_PRIORITY; p++) {
+		_rcl[p].for_each([] (Scheduler::Context & c) { c._claim = c._quota; });
+		_ucl[p].for_each([] (Scheduler::Context & c) { c._claim = c._quota; });
 	}
 }
 
@@ -65,7 +94,7 @@ void Scheduler::_head_claimed(unsigned const r)
 	if (!_head->_quota) { return; }
 	_head->_claim = r > _head->_quota ? _head->_quota : r;
 	if (_head->_claim || !_head->_ready) { return; }
-	_rcl[_head->_prio].to_tail(_head);
+	_rcl[_head->_prio].to_tail(_head->_claim_le);
 }
 
 
@@ -80,7 +109,7 @@ void Scheduler::_head_filled(unsigned const r)
 bool Scheduler::_claim_for_head()
 {
 	for (unsigned p = MAX_PRIORITY;; p--) {
-		Context * const s = _share(_rcl[p].head());
+		Context * const s = _rcl[p].head();
 		if (s && s->_claim) {
 			_set_head(s, s->_claim, 1);
 			return true;
@@ -93,7 +122,7 @@ bool Scheduler::_claim_for_head()
 
 bool Scheduler::_fill_for_head()
 {
-	Context * const s = _share(_fills.head());
+	Context * const s = _fills.head();
 	if (!s) { return 0; }
 	_set_head(s, s->_fill, 0);
 	return 1;
@@ -109,17 +138,17 @@ unsigned Scheduler::_trim_consumption(unsigned & q)
 }
 
 
-void Scheduler::_quota_introduction(Context * const s)
+void Scheduler::_quota_introduction(Context * const c)
 {
-	if (s->_ready) { _rcl[s->_prio].insert_tail(s); }
-	else { _ucl[s->_prio].insert_tail(s); }
+	if (c->_ready) { _rcl[c->_prio].insert_tail(c->_claim_le); }
+	else { _ucl[c->_prio].insert_tail(c->_claim_le); }
 }
 
 
-void Scheduler::_quota_revokation(Context * const s)
+void Scheduler::_quota_revokation(Context * const c)
 {
-	if (s->_ready) { _rcl[s->_prio].remove(s); }
-	else { _ucl[s->_prio].remove(s); }
+	if (c->_ready) { _rcl[c->_prio].remove(c->_claim_le); }
+	else { _ucl[c->_prio].remove(c->_claim_le); }
 }
 
 
@@ -146,75 +175,76 @@ void Scheduler::update(unsigned q)
 }
 
 
-bool Scheduler::ready_check(Context * const s1)
+bool Scheduler::ready_check(Context * const c)
 {
 	assert(_head);
 
-	ready(s1);
-	Context * s2 = _head;
-	if (!s1->_claim) { return s2 == &_idle; }
-	if (!_head_claims) { return 1; }
-	if (s1->_prio != s2->_prio) { return s1->_prio > s2->_prio; }
-	for (; s2 && s2 != s1; s2 = _share(s2->next_claim())) ;
-	return !s2;
+	ready(c);
+	if (!c->_claim) { return _head == &_idle; }
+	if (!_head_claims) { return true; }
+	if (c->_prio != _head->_prio) { return c->_prio > _head->_prio; }
+
+	for (Context_list::Element * e = &_head->_claim_le; e; e = e->next())
+	     if (e->object() == c) return false;
+	return true;
 }
 
 
-void Scheduler::ready(Context * const s)
+void Scheduler::ready(Context * const c)
 {
-	assert(!s->_ready && s != &_idle);
+	assert(!c->_ready && c != &_idle);
 
-	s->_ready = 1;
-	s->_fill = _fill;
-	_fills.insert_tail(s);
-	if (!s->_quota) { return; }
-	_ucl[s->_prio].remove(s);
-	if (s->_claim) { _rcl[s->_prio].insert_head(s); }
-	else { _rcl[s->_prio].insert_tail(s); }
+	c->_ready = 1;
+	c->_fill = _fill;
+	_fills.insert_tail(c->_fill_le);
+	if (!c->_quota) { return; }
+	_ucl[c->_prio].remove(c->_claim_le);
+	if (c->_claim) { _rcl[c->_prio].insert_head(c->_claim_le); }
+	else { _rcl[c->_prio].insert_tail(c->_claim_le); }
 }
 
 
-void Scheduler::unready(Context * const s)
+void Scheduler::unready(Context * const c)
 {
-	assert(s->_ready && s != &_idle);
-	s->_ready = 0;
-	_fills.remove(s);
-	if (!s->_quota) { return; }
-	_rcl[s->_prio].remove(s);
-	_ucl[s->_prio].insert_tail(s);
+	assert(c->_ready && c != &_idle);
+	c->_ready = 0;
+	_fills.remove(c->_fill_le);
+	if (!c->_quota) { return; }
+	_rcl[c->_prio].remove(c->_claim_le);
+	_ucl[c->_prio].insert_tail(c->_claim_le);
 }
 
 
 void Scheduler::yield() { _head_yields = 1; }
 
 
-void Scheduler::remove(Context * const s)
+void Scheduler::remove(Context * const c)
 {
-	assert(s != &_idle);
+	assert(c != &_idle);
 
-	if (s == _head) _head = nullptr;
-	if (s->_ready) { _fills.remove(s); }
-	if (!s->_quota) { return; }
-	if (s->_ready) { _rcl[s->_prio].remove(s); }
-	else { _ucl[s->_prio].remove(s); }
+	if (c == _head) _head = nullptr;
+	if (c->_ready) { _fills.remove(c->_fill_le); }
+	if (!c->_quota) { return; }
+	if (c->_ready) { _rcl[c->_prio].remove(c->_claim_le); }
+	else { _ucl[c->_prio].remove(c->_claim_le); }
 }
 
 
-void Scheduler::insert(Context * const s)
+void Scheduler::insert(Context * const c)
 {
-	assert(!s->_ready);
-	if (!s->_quota) { return; }
-	s->_claim = s->_quota;
-	_ucl[s->_prio].insert_head(s);
+	assert(!c->_ready);
+	if (!c->_quota) { return; }
+	c->_claim = c->_quota;
+	_ucl[c->_prio].insert_head(c->_claim_le);
 }
 
 
-void Scheduler::quota(Context * const s, unsigned const q)
+void Scheduler::quota(Context * const c, unsigned const q)
 {
-	assert(s != &_idle);
-	if (s->_quota) { _quota_adaption(s, q); }
-	else if (q) { _quota_introduction(s); }
-	s->_quota = q;
+	assert(c != &_idle);
+	if (c->_quota) { _quota_adaption(c, q); }
+	else if (q) { _quota_introduction(c); }
+	c->_quota = q;
 }
 
 
