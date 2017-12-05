@@ -234,6 +234,7 @@ proc install_config { args } {
 proc build_boot_image {binaries} {
 
 	# lookup available XSD files
+	set xsd_files ""
 	foreach binary $binaries {
 		if {[file exists "bin/$binary.xsd"]} {
 			lappend xsd_files "bin/$binary.xsd"
