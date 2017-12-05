@@ -74,11 +74,11 @@ void Scheduler::_consumed(unsigned const q)
 }
 
 
-void Scheduler::_set_head(Context * const s, unsigned const q, bool const c)
+void Scheduler::_set_head(Context & c, unsigned const q, bool const cl)
 {
 	_head_quota = q;
-	_head_claims = c;
-	_head = s;
+	_head_claims = cl;
+	_head = &c;
 }
 
 
@@ -109,9 +109,9 @@ void Scheduler::_head_filled(unsigned const r)
 bool Scheduler::_claim_for_head()
 {
 	for (unsigned p = MAX_PRIORITY;; p--) {
-		Context * const s = _rcl[p].head();
-		if (s && s->_claim) {
-			_set_head(s, s->_claim, 1);
+		Context * const c = _rcl[p].head();
+		if (c && c->_claim) {
+			_set_head(*c, c->_claim, true);
 			return true;
 		}
 		if (p == MIN_PRIORITY) break;
@@ -122,9 +122,9 @@ bool Scheduler::_claim_for_head()
 
 bool Scheduler::_fill_for_head()
 {
-	Context * const s = _fills.head();
-	if (!s) { return 0; }
-	_set_head(s, s->_fill, 0);
+	Context * const c = _fills.head();
+	if (!c) { return 0; }
+	_set_head(*c, c->_fill, false);
 	return 1;
 }
 
@@ -138,24 +138,24 @@ unsigned Scheduler::_trim_consumption(unsigned & q)
 }
 
 
-void Scheduler::_quota_introduction(Context * const c)
+void Scheduler::_quota_introduction(Context & c)
 {
-	if (c->_ready) { _rcl[c->_prio].insert_tail(c->_claim_le); }
-	else { _ucl[c->_prio].insert_tail(c->_claim_le); }
+	if (c._ready) { _rcl[c._prio].insert_tail(c._claim_le); }
+	else { _ucl[c._prio].insert_tail(c._claim_le); }
 }
 
 
-void Scheduler::_quota_revokation(Context * const c)
+void Scheduler::_quota_revokation(Context & c)
 {
-	if (c->_ready) { _rcl[c->_prio].remove(c->_claim_le); }
-	else { _ucl[c->_prio].remove(c->_claim_le); }
+	if (c._ready) { _rcl[c._prio].remove(c._claim_le); }
+	else { _ucl[c._prio].remove(c._claim_le); }
 }
 
 
-void Scheduler::_quota_adaption(Context * const s, unsigned const q)
+void Scheduler::_quota_adaption(Context & c, unsigned const q)
 {
-	if (q) { if (s->_claim > q) { s->_claim = q; } }
-	else { _quota_revokation(s); }
+	if (q) { if (c._claim > q) { c._claim = q; } }
+	else { _quota_revokation(c); }
 }
 
 
@@ -170,85 +170,87 @@ void Scheduler::update(unsigned q)
 	}
 
 	if (_claim_for_head()) { return; }
-	if (_fill_for_head()) { return; }
-	_set_head(&_idle, _fill, 0);
+	if (_fill_for_head())  { return; }
+	_set_head(_idle, _fill, false);
 }
 
 
-bool Scheduler::ready_check(Context * const c)
+bool Scheduler::ready_check(Context & c)
 {
 	assert(_head);
 
 	ready(c);
-	if (!c->_claim) { return _head == &_idle; }
-	if (!_head_claims) { return true; }
-	if (c->_prio != _head->_prio) { return c->_prio > _head->_prio; }
+
+	if (!c._claim)               { return *_head == _idle; }
+	if (!_head_claims)           { return true; }
+	if (c._prio != _head->_prio) { return c._prio > _head->_prio; }
 
 	for (Context_list::Element * e = &_head->_claim_le; e; e = e->next())
-	     if (e->object() == c) return false;
+	     if (*e->object() == c) return false;
 	return true;
 }
 
 
-void Scheduler::ready(Context * const c)
+void Scheduler::ready(Context & c)
 {
-	assert(!c->_ready && c != &_idle);
+	assert(!c._ready && !(c == _idle));
 
-	c->_ready = 1;
-	c->_fill = _fill;
-	_fills.insert_tail(c->_fill_le);
-	if (!c->_quota) { return; }
-	_ucl[c->_prio].remove(c->_claim_le);
-	if (c->_claim) { _rcl[c->_prio].insert_head(c->_claim_le); }
-	else { _rcl[c->_prio].insert_tail(c->_claim_le); }
+	c._ready = true;
+	c._fill  = _fill;
+	_fills.insert_tail(c._fill_le);
+	if (!c._quota) { return; }
+	_ucl[c._prio].remove(c._claim_le);
+	if (c._claim) { _rcl[c._prio].insert_head(c._claim_le); }
+	else          { _rcl[c._prio].insert_tail(c._claim_le); }
 }
 
 
-void Scheduler::unready(Context * const c)
+void Scheduler::unready(Context & c)
 {
-	assert(c->_ready && c != &_idle);
-	c->_ready = 0;
-	_fills.remove(c->_fill_le);
-	if (!c->_quota) { return; }
-	_rcl[c->_prio].remove(c->_claim_le);
-	_ucl[c->_prio].insert_tail(c->_claim_le);
+	assert(c._ready && !(c == _idle));
+
+	c._ready = false;
+	_fills.remove(c._fill_le);
+	if (!c._quota) { return; }
+	_rcl[c._prio].remove(c._claim_le);
+	_ucl[c._prio].insert_tail(c._claim_le);
 }
 
 
 void Scheduler::yield() { _head_yields = 1; }
 
 
-void Scheduler::remove(Context * const c)
+void Scheduler::remove(Context & c)
 {
-	assert(c != &_idle);
+	assert(!(c == _idle));
 
-	if (c == _head) _head = nullptr;
-	if (c->_ready) { _fills.remove(c->_fill_le); }
-	if (!c->_quota) { return; }
-	if (c->_ready) { _rcl[c->_prio].remove(c->_claim_le); }
-	else { _ucl[c->_prio].remove(c->_claim_le); }
+	if (&c == _head) _head = nullptr;
+	if (c._ready) { _fills.remove(c._fill_le); }
+	if (!c._quota) { return; }
+	if (c._ready) { _rcl[c._prio].remove(c._claim_le); }
+	else { _ucl[c._prio].remove(c._claim_le); }
 }
 
 
-void Scheduler::insert(Context * const c)
+void Scheduler::insert(Context & c)
 {
-	assert(!c->_ready);
-	if (!c->_quota) { return; }
-	c->_claim = c->_quota;
-	_ucl[c->_prio].insert_head(c->_claim_le);
+	assert(!c._ready);
+	if (!c._quota) { return; }
+	c._claim = c._quota;
+	_ucl[c._prio].insert_head(c._claim_le);
 }
 
 
-void Scheduler::quota(Context * const c, unsigned const q)
+void Scheduler::quota(Context & c, unsigned const q)
 {
-	assert(c != &_idle);
-	if (c->_quota) { _quota_adaption(c, q); }
+	assert(!(c == _idle));
+	if (c._quota) { _quota_adaption(c, q); }
 	else if (q) { _quota_introduction(c); }
-	c->_quota = q;
+	c._quota = q;
 }
 
 
 Scheduler::Scheduler(Context & i, unsigned const q,
                              unsigned const f)
 : _idle(i), _head_yields(0), _quota(q), _residual(q), _fill(f)
-{ _set_head(&i, f, 0); }
+{ _set_head(_idle, _fill, false); }

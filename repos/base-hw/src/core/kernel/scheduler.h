@@ -60,6 +60,9 @@ class Kernel::Scheduler
 
 				bool ready() const           { return _ready; }
 				void quota(unsigned const q) { _quota = q;    }
+
+				bool operator == (Context & other) const {
+					return this == &other; }
 		};
 
 	private:
@@ -104,7 +107,7 @@ class Kernel::Scheduler
 
 		void     _next_round();
 		void     _consumed(unsigned const q);
-		void     _set_head(Context * const c, unsigned const q, bool const cl);
+		void     _set_head(Context & c, unsigned const q, bool const cl);
 		void     _next_fill();
 		void     _head_claimed(unsigned const r);
 		void     _head_filled(unsigned const r);
@@ -113,19 +116,19 @@ class Kernel::Scheduler
 		unsigned _trim_consumption(unsigned & q);
 
 		/**
-		 * Fill 's' becomes a claim due to a quota donation
+		 * Context 'c' becomes a claim due to a quota donation
 		 */
-		void _quota_introduction(Context * const s);
+		void _quota_introduction(Context & c);
 
 		/**
-		 * Claim 's' looses its state as claim due to quota revokation
+		 * Context 'c' looses its state as claim due to quota revokation
 		 */
-		void _quota_revokation(Context * const s);
+		void _quota_revokation(Context & c);
 
 		/**
-		 * The quota of claim 's' changes to 'q'
+		 * The quota of context 'c' changes to 'q'
 		 */
-		void _quota_adaption(Context * const s, unsigned const q);
+		void _quota_adaption(Context & c, unsigned const q);
 
 	public:
 
@@ -145,39 +148,39 @@ class Kernel::Scheduler
 		void update(unsigned q);
 
 		/**
-		 * Set Context 'c' ready and return wether this outdates current head
+		 * Set context 'c' ready and return wether this outdates current head
 		 */
-		bool ready_check(Context * const c);
+		bool ready_check(Context & c);
 
 		/**
 		 * Set context 'c' ready
 		 */
-		void ready(Context * const c);
+		void ready(Context & c);
 
 		/**
 		 * Set context 'c' unready
 		 */
-		void unready(Context * const c);
+		void unready(Context & c);
 
 		/**
-		 * Current head looses its current claim/fill for this round
+		 * Current context looses its current claim/fill for this round
 		 */
 		void yield();
 
 		/**
 		 * Remove context 'c' from scheduler
 		 */
-		void remove(Context * const c);
+		void remove(Context & c);
 
 		/**
 		 * Insert context 'c' into scheduler
 		 */
-		void insert(Context * const c);
+		void insert(Context & c);
 
 		/**
-		 * Set quota of share 'c' to 'q'
+		 * Set quota of context 'c' to 'q'
 		 */
-		void quota(Context * const c, unsigned const q);
+		void quota(Context & c, unsigned const q);
 
 		/*
 		 * Accessors

@@ -63,7 +63,7 @@ void Cpu_job::_activate_own_share() { _cpu->schedule(this); }
 void Cpu_job::_deactivate_own_share()
 {
 	assert(_cpu->id() == Cpu::executing_id());
-	_cpu->scheduler()->unready(this);
+	_cpu->scheduler()->unready(*this);
 }
 
 
@@ -97,13 +97,13 @@ void Cpu_job::_interrupt(unsigned const cpu_id)
 void Cpu_job::affinity(Cpu * const cpu)
 {
 	_cpu = cpu;
-	_cpu->scheduler()->insert(this);
+	_cpu->scheduler()->insert(*this);
 }
 
 
 void Cpu_job::quota(unsigned const q)
 {
-	if (_cpu) { _cpu->scheduler()->quota(this, q); }
+	if (_cpu) { _cpu->scheduler()->quota(*this, q); }
 	else { Scheduler::Context::quota(q); }
 }
 
@@ -116,7 +116,7 @@ Cpu_job::Cpu_job(unsigned const p, unsigned const q)
 Cpu_job::~Cpu_job()
 {
 	if (!_cpu) { return; }
-	_cpu->scheduler()->remove(this);
+	_cpu->scheduler()->remove(*this);
 }
 
 
@@ -149,8 +149,8 @@ time_t Cpu::timeout_max_us() const { return _timer.timeout_max_us(); }
 
 void Cpu::schedule(Job * const job)
 {
-	if (_id == executing_id()) { _scheduler.ready(job); }
-	else if (_scheduler.ready_check(job)) { trigger_ip_interrupt(); }
+	if (_id == executing_id()) { _scheduler.ready(*job); }
+	else if (_scheduler.ready_check(*job)) { trigger_ip_interrupt(); }
 }
 
 

@@ -12,6 +12,7 @@
  */
 
 #include <base/component.h>
+#include <util/reconstructible.h>
 
 /* core includes */
 #include <kernel/scheduler.h>
@@ -25,21 +26,17 @@ using Genode::addr_t;
 using Context = Kernel::Scheduler::Context;
 using Kernel::Scheduler;
 
-void * operator new(__SIZE_TYPE__ s, void * p) { return p; }
-
 struct Data
 {
-	Context idle;
-	Scheduler scheduler;
-	char shares[9][sizeof(Context)];
-
-	Data() : idle(0, 0), scheduler(idle, 1000, 100) { }
+	Context                        idle { 0, 0 };
+	Genode::Constructible<Context> contexts[10];
+	Scheduler                      scheduler { idle, 1000, 100 };
 };
 
-Data * data()
+Data & data()
 {
 	static Data d;
-	return &d;
+	return d;
 }
 
 void done()
@@ -48,67 +45,62 @@ void done()
 	while (1) ;
 }
 
-unsigned share_id(void * const pointer)
+unsigned context_id(Context & context)
 {
-	addr_t const address = (addr_t)pointer;
-	addr_t const base = (addr_t)data()->shares;
-	if (address < base || address >= base + sizeof(data()->shares)) {
-		return 0; }
-	return (address - base) / sizeof(Context) + 1;
+	for (unsigned i = 1; i <= 10; i++)
+		if (context == *data().contexts[i]) return i;
+	return 0;
 }
 
-Context * share(unsigned const id)
+Context & context(unsigned const id)
 {
-	if (!id) { return &data()->idle; }
-	return reinterpret_cast<Context *>(&data()->shares[id - 1]);
+	if (id == 0) { return data().idle; }
+	return *data().contexts[id];
 }
 
 void create(unsigned const id)
 {
-	Context * const s = share(id);
-	void * const p = (void *)s;
 	switch (id) {
-	case 1: new (p) Context(2, 230); break;
-	case 2: new (p) Context(0, 170); break;
-	case 3: new (p) Context(3, 110); break;
-	case 4: new (p) Context(1,  90); break;
-	case 5: new (p) Context(3, 120); break;
-	case 6: new (p) Context(3,   0); break;
-	case 7: new (p) Context(2, 180); break;
-	case 8: new (p) Context(2, 100); break;
-	case 9: new (p) Context(2,   0); break;
+	case 1: data().contexts[id].construct(2, 230); break;
+	case 2: data().contexts[id].construct(0, 170); break;
+	case 3: data().contexts[id].construct(3, 110); break;
+	case 4: data().contexts[id].construct(1,  90); break;
+	case 5: data().contexts[id].construct(3, 120); break;
+	case 6: data().contexts[id].construct(3,   0); break;
+	case 7: data().contexts[id].construct(2, 180); break;
+	case 8: data().contexts[id].construct(2, 100); break;
+	case 9: data().contexts[id].construct(2,   0); break;
 	default: return;
 	}
-	data()->scheduler.insert(s);
+	data().scheduler.insert(context(id));
 }
 
 void destroy(unsigned const id)
 {
-	Context * const s = share(id);
-	data()->scheduler.remove(s);
-	s->~Context();
+	data().scheduler.remove(context(id));
+	data().contexts[id].destruct();
 }
 
 unsigned time()
 {
-	return data()->scheduler.quota() -
-	       data()->scheduler.residual();
+	return data().scheduler.quota() -
+	       data().scheduler.residual();
 }
 
 void update_check(unsigned const l, unsigned const c, unsigned const t,
                   unsigned const s, unsigned const q)
 {
-	data()->scheduler.update(c);
+	data().scheduler.update(c);
 	unsigned const st = time();
 	if (t != st) {
 		Genode::log("wrong time ", st, " in line ", l);
 		done();
 	}
-	Context * const hs = data()->scheduler.head();
-	unsigned const hq = data()->scheduler.head_quota();
-	if (hs != share(s)) {
-		unsigned const hi = share_id(hs);
-		Genode::log("wrong share ", hi, " in line ", l);
+	Context & hs = *data().scheduler.head();
+	unsigned const hq = data().scheduler.head_quota();
+	if (!(hs == context(s))) {
+		unsigned const hi = context_id(hs);
+		Genode::log("wrong context ", hi, " in line ", l);
 		done();
 	}
 	if (hq != q) {
@@ -119,7 +111,7 @@ void update_check(unsigned const l, unsigned const c, unsigned const t,
 
 void ready_check(unsigned const l, unsigned const s, bool const x)
 {
-	bool const y = data()->scheduler.ready_check(share(s));
+	bool const y = data().scheduler.ready_check(context(s));
 	if (y != x) {
 		Genode::log("wrong check result ", y, " in line ", l);
 		done();
@@ -133,10 +125,10 @@ void ready_check(unsigned const l, unsigned const s, bool const x)
 
 #define C(s)       create(s);
 #define D(s)       destroy(s);
-#define A(s)       data()->scheduler.ready(share(s));
-#define I(s)       data()->scheduler.unready(share(s));
-#define Y          data()->scheduler.yield();
-#define Q(s, q)    data()->scheduler.quota(share(s), q);
+#define A(s)       data().scheduler.ready(context(s));
+#define I(s)       data().scheduler.unready(context(s));
+#define Y          data().scheduler.yield();
+#define Q(s, q)    data().scheduler.quota(context(s), q);
 #define U(c, t, s, q) update_check(__LINE__, c, t, s, q);
 #define O(s)       ready_check(__LINE__, s, true);
 #define N(s)       ready_check(__LINE__, s, false);
