@@ -47,8 +47,8 @@ platform:
 ! ./tool/create_builddir x86_64
 
 This creates a new build directory for building x86_64 binaries in './build'.
-The build system creates unified binaries that are work on the given
-architecture independend from the underlying base platform, in this case Linux.
+The build system creates unified binaries that work on the given
+architecture independent from the underlying base platform, in this case Linux.
 
 To give Genode a try, build and execute a simple demo scenario via:
 
