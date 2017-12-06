@@ -524,7 +524,7 @@ struct Nested_stress_test : Signal_test
 	struct Sender : Thread
 	{
 		Signal_transmitter transmitter;
-		bool               destruct { false };
+		volatile bool      destruct { false };
 
 		Sender(Env &env, char const *name, Signal_context_capability cap)
 		: Thread(env, name, 8*1024), transmitter(cap) { }
@@ -540,8 +540,10 @@ struct Nested_stress_test : Signal_test
 	{
 		Entrypoint  ep;
 		char const *name;
-		unsigned    count    { 0 };
-		bool        destruct { false };
+		unsigned    count { 0 };
+		unsigned    level { 0 };
+		volatile bool destruct { false };
+		volatile bool ready_for_destruction { false };
 
 		Io_signal_handler<Receiver> handler { ep, *this, &Receiver::handle };
 
@@ -554,7 +556,11 @@ struct Nested_stress_test : Signal_test
 			 * We have to get out of the nesting if the host wants to destroy
 			 * us to avoid a deadlock at the lock in the signal handler.
 			 */
-			if (destruct) { return; }
+			if (destruct) {
+				if (level == 0)
+					ready_for_destruction = true;
+				return; 
+			}
 
 			/* raise call counter */
 			count++;
@@ -564,7 +570,10 @@ struct Nested_stress_test : Signal_test
 			 * gives zero, then unwind the whole nesting and start afresh.
 			 */
 			if ((count & ((1 << UNWIND_COUNT_MOD_LOG2) - 1)) != 0) {
-				ep.wait_and_dispatch_one_io_signal(); }
+				level ++;
+				ep.wait_and_dispatch_one_io_signal();
+				level --;
+			}
 		}
 	};
 
@@ -599,26 +608,33 @@ struct Nested_stress_test : Signal_test
 		/* tell timer not to send any signals anymore. */
 		timer.sigh(Timer::Session::Signal_context_capability());
 
-		/* let senders stop burning our CPU time */
-		sender_1.destruct = true;
-		sender_2.destruct = true;
-		sender_3.destruct = true;
-
 		/* let receivers unwind their nesting and stop with the next signal */
 		receiver_1.destruct = true;
 		receiver_2.destruct = true;
 		receiver_3.destruct = true;
 
 		/*
-		 * Send final signals ourselves because otherwise we would have to
-		 * synchronize with the senders.
+		 * Wait until receiver threads get out of
+		 * wait_and_dispatch_one_io_signal, otherwise we may (dead)lock forever
+		 * during destruction of the Io_signal_handler.
 		 */
-		sender_1.transmitter.submit();
-		sender_2.transmitter.submit();
-		sender_3.transmitter.submit();
+		log ("waiting for receivers");
+
+		while (!receiver_1.ready_for_destruction) { }
+		while (!receiver_2.ready_for_destruction) { }
+		while (!receiver_3.ready_for_destruction) { }
+
+		/* let senders stop burning our CPU time */
+		sender_1.destruct = true;
+		sender_2.destruct = true;
+		sender_3.destruct = true;
+
+		log ("waiting for senders");
 
 		/* wait until threads joined */
 		sender_1.join(); sender_2.join(), sender_3.join();
+
+		log ("destructing ...");
 	}
 
 	void handle_poll()
