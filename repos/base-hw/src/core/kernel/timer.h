@@ -79,14 +79,16 @@ class Kernel::Timer
 
 		time_t _max_value() const;
 
+		void _process_timeouts();
+
+		void _schedule_timeout();
+
 	public:
 
 		Timer(unsigned cpu_id);
 
-		void schedule_timeout();
 
 		time_t update_time();
-		void process_timeouts();
 
 		void set_timeout(Timeout * const timeout, time_t const duration);
 

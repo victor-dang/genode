@@ -65,17 +65,20 @@ void Timer::set_timeout(Timeout * const timeout, time_t const duration)
 	     t1 = t2, t2 = t2->next()) { }
 
 	list.insert(timeout, t1);
+
+	if (timeout == _timeout_list.first()) _schedule_timeout();
 }
 
 
-void Timer::schedule_timeout()
+void Timer::_schedule_timeout()
 {
+	/* maximum timeout */
+	time_t const duration =  ~(time_t)0 - _time;
+
 	/* get the timeout with the nearest end time */
 	Timeout * timeout = _timeout_list[_time_period].first();
-	if (!timeout) {
-		timeout = _timeout_list[!_time_period].first();
-		assert(timeout);
-	}
+	if (timeout && !_time_overflow
+
 	/* install timeout at timer hardware */
 	time_t const duration = (time_t)timeout->_end - _time;
 	_last_timeout_duration = duration;
@@ -108,11 +111,15 @@ time_t Timer::update_time()
 	}
 	/* update time */
 	_time += duration;
+
+	/* process all timeouts */
+	_process_timeouts()
+
 	return duration;
 }
 
 
-void Timer::process_timeouts()
+void Timer::_process_timeouts()
 {
 	/*
 	 * Walk through timeouts until the first whose end time is in the future.

@@ -159,19 +159,26 @@ void Scheduler::_quota_adaption(Context & c, unsigned const q)
 }
 
 
-void Scheduler::update(unsigned q)
+void Scheduler::update()
 {
+	if (!_needs_to_update) return;
+
+	_needs_to_update = false;
+	time_t elapsed = _timer.update_time();
+
 	/* do not detract the quota if the head context was removed even now */
 	if (_head) {
-		unsigned const r = _trim_consumption(q);
+		unsigned const r = _trim_consumption(elapsed);
 		if (_head_claims) { _head_claimed(r); }
 		else              { _head_filled(r);  }
-		_consumed(q);
+		_consumed(elapsed);
 	}
 
-	if (_claim_for_head()) { return; }
-	if (_fill_for_head())  { return; }
-	_set_head(_idle, _fill, false);
+	if (!_claim_for_head())
+		if (!_fill_for_head())
+			_set_head(_idle, _fill, false);
+
+	_timer.set_timeout(this, _head_quota);
 }
 
 
@@ -180,6 +187,8 @@ bool Scheduler::ready_check(Context & c)
 	assert(_head);
 
 	ready(c);
+
+	if (_needs_to_update) return false;
 
 	if (!c._claim)               { return *_head == _idle; }
 	if (!_head_claims)           { return true; }
@@ -217,7 +226,7 @@ void Scheduler::unready(Context & c)
 }
 
 
-void Scheduler::yield() { _head_yields = 1; }
+void Scheduler::yield() { _head_yields = true; }
 
 
 void Scheduler::remove(Context & c)
@@ -250,7 +259,9 @@ void Scheduler::quota(Context & c, unsigned const q)
 }
 
 
-Scheduler::Scheduler(Context & i, unsigned const q,
-                             unsigned const f)
-: _idle(i), _head_yields(0), _quota(q), _residual(q), _fill(f)
-{ _set_head(_idle, _fill, false); }
+Scheduler::Scheduler(Timer & timer, Context & idle)
+: _idle(idle), _head_yields(false),
+  _quota(_timer.us_to_ticks(SUPER_PERIOD_US)),
+  _residual(_quota),
+  _fill(_timer.us_to_ticks(SLACK_TIME_SLICE_US)) {
+	  _set_head(_idle, _fill, false); }

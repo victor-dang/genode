@@ -84,14 +84,12 @@ class Kernel::Cpu : public Genode::Cpu, public Irq::Pool, private Timeout
 
 
 		unsigned const _id;
-		Timer          _timer;
-		Scheduler      _scheduler;
-		Idle_thread    _idle;
-		Ipi            _ipi_irq;
-		Irq            _timer_irq; /* timer IRQ implemented as empty event */
-
-		unsigned _quota() const { return _timer.us_to_ticks(cpu_quota_us); }
-		unsigned _fill() const  { return _timer.us_to_ticks(cpu_fill_us); }
+		Timer          _timer      { _id };
+		Idle_thread    _idle       { this };
+		Scheduler      _scheduler  { _timer, _idle };
+		Cpu_job *      _current    { nullptr };
+		Ipi            _ipi_irq    { *this }
+		Irq            _timer_irq; { _timer.interrupt_id(), *this };
 
 	public:
 

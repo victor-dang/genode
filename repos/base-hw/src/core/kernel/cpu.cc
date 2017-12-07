@@ -57,13 +57,17 @@ void Cpu_job::timeout(Timeout * const timeout, time_t const us)
 }
 
 
-void Cpu_job::_activate_own_share() { _cpu->schedule(this); }
+void Cpu_job::_activate_own_share()
+{
+	if (_scheduler.schedule(*job) && (_cpu->id() == Cpu::executing_id()))
+		trigger_ip_interrupt();
+}
 
 
 void Cpu_job::_deactivate_own_share()
 {
 	assert(_cpu->id() == Cpu::executing_id());
-	_cpu->scheduler()->unready(*this);
+	_cpu->scheduler()->unschedule(*this);
 }
 
 
@@ -147,13 +151,6 @@ time_t Cpu::timeout_age_us(Timeout const * const timeout) const {
 time_t Cpu::timeout_max_us() const { return _timer.timeout_max_us(); }
 
 
-void Cpu::schedule(Job * const job)
-{
-	if (_id == executing_id()) { _scheduler.ready(*job); }
-	else if (_scheduler.ready_check(*job)) { trigger_ip_interrupt(); }
-}
-
-
 bool Cpu::interrupt(unsigned const irq_id)
 {
 	Irq * const irq = object(irq_id);
@@ -165,10 +162,10 @@ bool Cpu::interrupt(unsigned const irq_id)
 
 Cpu_job & Cpu::schedule()
 {
+	if (_current) _current->exception(*this);
+
 	/* update scheduler */
 	time_t quota = _timer.update_time();
-	Job & old_job = scheduled_job();
-	old_job.exception(*this);
 	_timer.process_timeouts();
 	_scheduler.update(quota);
 
@@ -194,12 +191,7 @@ addr_t Cpu::stack_start() {
 	return (addr_t)&kernel_stack + KERNEL_STACK_SIZE * (_id+1); }
 
 
-Cpu::Cpu(unsigned const id)
-:
-	_id(id), _timer(_id),
-	_scheduler(_idle, _quota(), _fill()), _idle(this),
-	_ipi_irq(*this), _timer_irq(_timer.interrupt_id(), *this)
-{ }
+Cpu::Cpu(unsigned const id) : _id(id){ }
 
 
 /**************

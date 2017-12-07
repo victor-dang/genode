@@ -18,7 +18,6 @@
 /* core includes */
 #include <util/list.h>
 #include <util/misc_math.h>
-#include <kernel/configuration.h>
 
 namespace Kernel { class Scheduler; }
 
@@ -30,6 +29,11 @@ class Kernel::Scheduler
 		enum Priority {
 			MIN_PRIORITY = 0,
 			MAX_PRIORITY = 3,
+		};
+
+		enum Periods {
+			SUPER_PERIOD_US     = 1000000,
+			SLACK_TIME_SLICE_US = 10000,
 		};
 
 		class Context
@@ -101,6 +105,7 @@ class Kernel::Scheduler
 		unsigned        _head_quota;
 		bool            _head_claims;
 		bool            _head_yields;
+		bool            _needs_to_update { false };
 		unsigned const  _quota;
 		unsigned        _residual;
 		unsigned const  _fill;
@@ -135,12 +140,12 @@ class Kernel::Scheduler
 		/**
 		 * Constructor
 		 *
-		 * \param i  Gets scheduled with static quota when no other context
-		 *           is schedulable. Unremovable. All values get ignored.
-		 * \param q  total amount of time quota that can be claimed by shares
-		 * \param f  time-slice length of the fill round-robin
+		 * \param timer Timer used to measure time and trigger schedule
+		                timeouts.
+		 * \param idle  Gets scheduled with static quota when no other context
+		 *              is schedulable. Unremovable. All values get ignored.
 		 */
-		Scheduler(Context & c, unsigned const q, unsigned const f);
+		Scheduler(Timer & timer, Context & idle);
 
 		/**
 		 * Update head according to the consumption of quota 'q'
