@@ -126,13 +126,6 @@ proc check_config {bin xml_file xsd_file label avail_xsd_files nesting_level} {
 			puts ""
 			exit 1
 		}
-		if {![have_installed xmlstarlet]} {
-			puts ""
-			puts "Warning: cannot validate config syntax\
-			      (please install xmlstarlet)"
-			puts ""
-			exit 1
-		}
 	}
 
 	# check the given component configuration itself
@@ -175,8 +168,8 @@ proc check_config {bin xml_file xsd_file label avail_xsd_files nesting_level} {
 			                      not(child::binary) and @name=\'$child_bin\'"
 
 			set xpath "string(/config/start\[$xpath_start_cond\]\[$child_instance\]/@name)"
-			set xmlstarlet "xmlstarlet sel -t -c \"$xpath\" $xml_file"
-			if {[catch {exec {*}$xmlstarlet} child_name]} {
+			set select_xpath "xmllint --xpath \"$xpath\" $xml_file"
+			if {[catch {exec {*}$select_xpath} child_name]} {
 
 				#
 				# No further child instance that uses this binary.
@@ -190,8 +183,8 @@ proc check_config {bin xml_file xsd_file label avail_xsd_files nesting_level} {
 			# call to this procedure.
 			#
 			set xpath "/config/start\[$xpath_start_cond\]\[$child_instance\]/config"
-			set xmlstarlet "xmlstarlet sel -t -c \"$xpath\" $xml_file"
-			if {[catch {exec {*}$xmlstarlet} child_xml]} {
+			set select_xpath "xmllint --xpath \"$xpath\" $xml_file"
+			if {[catch {exec {*}$select_xpath} child_xml]} {
 
 				# the child has no config
 				break
