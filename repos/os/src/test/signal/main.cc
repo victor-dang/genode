@@ -524,7 +524,7 @@ struct Nested_stress_test : Signal_test
 	struct Sender : Thread
 	{
 		Signal_transmitter transmitter;
-		volatile bool      destruct { false };
+		bool volatile      destruct { false };
 
 		Sender(Env &env, char const *name, Signal_context_capability cap)
 		: Thread(env, name, 8*1024), transmitter(cap) { }
@@ -542,8 +542,8 @@ struct Nested_stress_test : Signal_test
 		char const *name;
 		unsigned    count { 0 };
 		unsigned    level { 0 };
-		volatile bool destruct { false };
-		volatile bool ready_for_destruction { false };
+		bool volatile destruct { false };
+		bool volatile ready_for_destruction { false };
 
 		Io_signal_handler<Receiver> handler { ep, *this, &Receiver::handle };
 
@@ -559,7 +559,7 @@ struct Nested_stress_test : Signal_test
 			if (destruct) {
 				if (level == 0)
 					ready_for_destruction = true;
-				return; 
+				return;
 			}
 
 			/* raise call counter */
@@ -618,7 +618,7 @@ struct Nested_stress_test : Signal_test
 		 * wait_and_dispatch_one_io_signal, otherwise we may (dead)lock forever
 		 * during destruction of the Io_signal_handler.
 		 */
-		log ("waiting for receivers");
+		log("waiting for receivers");
 
 		while (!receiver_1.ready_for_destruction) { }
 		while (!receiver_2.ready_for_destruction) { }
@@ -634,7 +634,7 @@ struct Nested_stress_test : Signal_test
 		/* wait until threads joined */
 		sender_1.join(); sender_2.join(), sender_3.join();
 
-		log ("destructing ...");
+		log("destructing ...");
 	}
 
 	void handle_poll()
