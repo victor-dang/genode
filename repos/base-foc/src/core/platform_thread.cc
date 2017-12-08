@@ -95,7 +95,6 @@ void Platform_thread::pause()
 	 */
 	l4_thread_ex_regs_ret(_thread.local.data()->kcap(), &_pager_obj->state.ip,
 	                      &_pager_obj->state.sp, &flags);
-	_pager_obj->state.lock.unlock();
 
 	/*
 	 * Wait until the pager thread got an exception from
