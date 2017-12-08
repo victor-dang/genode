@@ -494,10 +494,7 @@ void Region_map_component::detach(Local_addr local_addr)
 	/* read meta data for address */
 	Rm_region *region_ptr = _map.metadata(local_addr);
 
-	if (!region_ptr) {
-		warning("detach: no attachment at ", (void *)local_addr);
-		return;
-	}
+	if (!region_ptr) { return; }
 
 	if (region_ptr->base() != static_cast<addr_t>(local_addr))
 		warning("detach: ", static_cast<void *>(local_addr), " is not "
