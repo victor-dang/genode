@@ -107,14 +107,14 @@ install_config {
 				<rom name="leitzentrale.config"/>
 				<rom name="wlan.config"/>
 				<dir name="runtime">
-					<rom name="empty_runtime.config"  as="config"/>
-					<rom name="empty_runtime.config"  as="empty.config" />
-					<rom name="block_runtime.config"  as="block.config" />
-					<rom name="load_runtime.config"   as="load.config" />
-					<rom name="fs_runtime.config"     as="fs.config" />
-					<rom name="linux_runtime.config"  as="linux.config" />
-					<rom name="usb_fs_runtime.config" as="usb_fs.config" />
-					<rom name="wifi_runtime.config"   as="wifi.config" />
+					<rom name="empty_runtime.config"    as="config"/>
+					<rom name="empty_runtime.config"    as="empty.config" />
+					<rom name="block_runtime.config"    as="block.config" />
+					<rom name="load_runtime.config"     as="load.config" />
+					<rom name="fs_runtime.config"       as="fs.config" />
+					<rom name="linux_runtime.config"    as="linux.config" />
+					<rom name="usb_fs_runtime.config"   as="usb_fs.config" />
+					<rom name="download_runtime.config" as="download.config" />
 				</dir>
 				<dir name="subinit">
 					<rom name="default_fs_subinit.config"   as="default_fs.config" />
