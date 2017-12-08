@@ -32,9 +32,9 @@ class Sender : Thread
 		Signal_transmitter _transmitter;
 		unsigned const     _interval_ms;
 		bool     const     _verbose;
-		bool               _stop       { false };
+		bool     volatile  _stop       { false };
 		unsigned           _submit_cnt { 0 };
-		bool               _idle       { false };
+		bool     volatile  _idle       { false };
 
 		void entry()
 		{
@@ -63,6 +63,14 @@ class Sender : Thread
 			_transmitter(context), _interval_ms(interval_ms), _verbose(verbose)
 		{
 			Thread::start();
+		}
+
+		~Sender()
+		{
+			if (!_stop && Thread::myself() != this) {
+				_stop = true;
+				join();
+			}
 		}
 
 		/***************
