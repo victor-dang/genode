@@ -70,7 +70,7 @@ close $vimrc_fd
 
 # write default .bash_profile file
 set bash_profile_fd [open bin/bash_profile w]
-puts $bash_profile_fd {
+puts $bash_profile_fd "
 cp /bin/make /usr/bin/
 cp /bin/echo /usr/bin/
 cp /bin/mkdir /usr/bin/
@@ -78,8 +78,8 @@ echo 'creating build directory...'
 /genode/tool/create_builddir $platform BUILD_DIR=/home/build
 cd /home/build
 echo 'CROSS_DEV_PREFIX=$tool_prefix\' > etc/tools.conf
-$platform_cmds"
-echo 'now you can type, for example, \"make core\"'}
+$platform_cmds
+echo 'now you can type, for example, \"make core\"'"
 close $bash_profile_fd
 
 exec tar cvf bin/genode.tar -C $genode_dir tool repos/base repos/$platform_base_dir repos/os repos/demo
