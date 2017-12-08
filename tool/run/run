@@ -129,7 +129,7 @@ proc check_config {bin xml_file xsd_file label avail_xsd_files nesting_level} {
 	}
 
 	# check the given component configuration itself
-	puts "  CHK $label"
+	puts "  CHECK $label"
 	if {[catch {exec xmllint --noout -schema $xsd_file $xml_file} result]} {
 
 		if {$result != "$xml_file validates"} {
