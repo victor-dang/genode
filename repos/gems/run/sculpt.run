@@ -11,7 +11,9 @@ import_from_depot genodelabs/src/[base_src] \
                   genodelabs/src/vbox5-nova \
                   genodelabs/src/libiconv \
                   genodelabs/src/nic_router \
-                  genodelabs/src/acpica
+                  genodelabs/src/acpica \
+                  genodelabs/src/bsd_audio_drv \
+                  genodelabs/src/mixer
 
 install_config {
 <config prio_levels="4"> <!-- set prio_levels to 4 -->

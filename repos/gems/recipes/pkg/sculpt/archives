@@ -25,6 +25,4 @@ _/src/coreutils
 _/src/vfs
 _/src/rump
 _/src/ipxe_nic_drv
-_/src/bsd_audio_drv
-_/src/mixer
 _/src/chroot
