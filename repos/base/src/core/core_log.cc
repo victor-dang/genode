@@ -19,7 +19,8 @@ static unsigned range_pos   { 0 };
 
 static void out_mem(char const c)
 {
-	struct Log_memory {
+	struct Log_memory
+	{
 		struct Header { unsigned value; } pos;
 		char data[1];
 
@@ -38,9 +39,12 @@ static void out_mem(char const c)
 	range_pos = mem->out(c, range_pos, range);
 }
 
+
 void Genode::init_core_log(Core_log_range const &r) { range = r; }
 
-void Genode::Core_log::output(char const * str) {
+
+void Genode::Core_log::output(char const * str)
+{
 	for (unsigned i = 0; i < Genode::strlen(str); i++) {
 		out(str[i]);
 		out_mem(str[i]);
