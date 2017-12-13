@@ -14,7 +14,6 @@
 /* base includes */
 #include <base/component.h>
 #include <log_session/connection.h>
-#include <util/reconstructible.h>
 
 /* os includes */
 #include <base/attached_rom_dataspace.h>
@@ -95,8 +94,7 @@ struct Monitor
 {
 	Genode::Env &env;
 
-	Genode::Constructible<Log> output_core;
-	Genode::Constructible<Log> output_kernel;
+	Log output { env, "log", "log" };
 
 	Timer::Connection timer { env };
 
@@ -104,18 +102,6 @@ struct Monitor
 
 	Monitor(Genode::Env &env) : env(env)
 	{
-		try {
-			output_core.construct(env, "core_log", "core");
-		} catch (...) {
-			Genode::warning ("Core output is not available.");
-		}
-
-		try {
-			output_kernel.construct(env, "kernel_log", "kernel");
-		} catch (...) {
-			Genode::warning ("Kernel output is not available.");
-		}
-
 		timer.sigh(interval);
 
 		Genode::addr_t period_ms = 1000;
@@ -132,11 +118,7 @@ struct Monitor
 
 	void check()
 	{
-		if (output_kernel.constructed())
-			output_kernel->log();
-
-		if (output_core.constructed())
-			output_core->log();
+		output.log();
 	}
 };
 
