@@ -40,12 +40,12 @@ endif
 # archives (<user>/pkg/<spec>/<name>) so that 'ARCHIVES(pkg)' contains source
 # pkgs only, and 'ARCHIVES(binpkg)' contains binary pkgs.
 #
-# If the path contains 4 elements, it refers to a binary pkg where the third
+# If the path contains 5 elements, it refers to a binary pkg where the third
 # element is the build spec. Otherwise, the path refers to a source pkg.
 #
 
-_src_pkg = $(if $(word 4,$(subst /, ,$1)),,$1)
-_bin_pkg = $(if $(word 4,$(subst /, ,$1)),$1,)
+_src_pkg = $(if $(word 5,$(subst /, ,$1)),,$1)
+_bin_pkg = $(if $(word 5,$(subst /, ,$1)),$1,)
 
 ARCHIVES(binpkg) := $(strip $(foreach PKG,${ARCHIVES(pkg)},$(call _bin_pkg,$(PKG))))
 ARCHIVES(pkg)    := $(strip $(foreach PKG,${ARCHIVES(pkg)},$(call _src_pkg,$(PKG))))
