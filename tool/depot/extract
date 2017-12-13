@@ -47,6 +47,9 @@ endef
 
 export GENODE_DIR := $(realpath $(dir $(MAKEFILE_LIST))/../..)
 
+# the extract tool expects archive paths given without the version element
+BIN_PKG_PATH_ELEMS := 4
+
 include $(GENODE_DIR)/tool/depot/mk/front_end.inc
 include $(GENODE_DIR)/tool/depot/mk/categorize_args.inc
 
