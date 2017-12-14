@@ -82,6 +82,8 @@ install_config {
 
 build_boot_image "core init timer ld.lib.so vfs fs_log log_core"
 
+append qemu_args " -nographic "
+
 if { [get_cmd_switch --autopilot] } {
 	run_genode_until {.*\[init -> vfs] \[.*\n} 20
 } else {
