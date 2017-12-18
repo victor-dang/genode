@@ -53,18 +53,21 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 
-#ifndef __sigmask
-/* Return a mask that includes the bit for SIG only.  */
-# define __sigmask(sig) \
-  (((unsigned long int) 1) << (((sig) - 1) % (8 * sizeof (unsigned long int))))
-#endif
-
-#ifndef __sigword
-/* Return the word index for SIG.  */
-# define __sigword(sig) (((sig) - 1) / (8 * sizeof (unsigned long int)))
-#endif
 
 #undef size_t
+
+
+/*
+ * Both '__sigword' and '__sigmask' were macros defined in the glibc header
+ * file 'bits/sigset.h'. The macros were moved in later versions and,
+ * therefore, we implement them explicitly.
+ */
+
+/* return mask that includes the bit for SIG only (was __sigmask) */
+#define lx_sigmask(sig) ((1UL) << (((sig) - 1) % (8 * sizeof(unsigned long))))
+
+/* return word index for SIG (was __sigword)  */
+#define lx_sigword(sig) (((sig) - 1) / (8 * sizeof (unsigned long)))
 
 
 /***********************************
@@ -385,17 +388,11 @@ class Lx_sigset
 			for (unsigned i = 0; i < _SIGSET_NWORDS; i++)
 				_value[i] = 0;
 
-			/*
-			 * Both '__sigword' and '__sigmask' are macros, defined in the
-			 * glibc header file 'bits/sigset.h' and not external functions.
-			 * Therefore we can use them here without getting into conflicts
-			 * with the linkage of another libc.
-			 */
-			_value[__sigword(signum)] = __sigmask(signum);
+			_value[lx_sigword(signum)] = lx_sigmask(signum);
 		}
 
 		bool is_set(int signum) {
-			return _value[__sigword(signum)] && __sigmask(signum); }
+			return _value[lx_sigword(signum)] && lx_sigmask(signum); }
 };
 
 
