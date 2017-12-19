@@ -13,7 +13,8 @@ import_from_depot genodelabs/src/[base_src] \
                   genodelabs/src/nic_router \
                   genodelabs/src/acpica \
                   genodelabs/src/bsd_audio_drv \
-                  genodelabs/src/mixer
+                  genodelabs/src/mixer \
+                  genodelabs/src/part_blk
 
 
 proc config_system_content {} { return {\
