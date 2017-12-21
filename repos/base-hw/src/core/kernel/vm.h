@@ -36,6 +36,12 @@ class Kernel::Vm : public Cpu_job,
 {
 	private:
 
+		/*
+		 * Noncopyable
+		 */
+		Vm(Vm const &);
+		Vm &operator = (Vm const &);
+
 		enum State { ACTIVE, INACTIVE };
 
 		unsigned                 _id;

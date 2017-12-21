@@ -57,15 +57,18 @@ class Net::Arp_packet
 {
 	private:
 
-		Genode::uint16_t _hardware_address_type;
-		Genode::uint16_t _protocol_address_type;
-		Genode::uint8_t  _hardware_address_size;
-		Genode::uint8_t  _protocol_address_size;
-		Genode::uint16_t _opcode;
-		Genode::uint8_t  _src_mac[Ethernet_frame::ADDR_LEN];
-		Genode::uint8_t  _src_ip[Ipv4_packet::ADDR_LEN];
-		Genode::uint8_t  _dst_mac[Ethernet_frame::ADDR_LEN];
-		Genode::uint8_t  _dst_ip[Ipv4_packet::ADDR_LEN];
+		struct
+		{
+			Genode::uint16_t _hardware_address_type;
+			Genode::uint16_t _protocol_address_type;
+			Genode::uint8_t  _hardware_address_size;
+			Genode::uint8_t  _protocol_address_size;
+			Genode::uint16_t _opcode;
+			Genode::uint8_t  _src_mac[Ethernet_frame::ADDR_LEN];
+			Genode::uint8_t  _src_ip[Ipv4_packet::ADDR_LEN];
+			Genode::uint8_t  _dst_mac[Ethernet_frame::ADDR_LEN];
+			Genode::uint8_t  _dst_ip[Ipv4_packet::ADDR_LEN];
+		};
 
 	public:
 
@@ -210,7 +213,7 @@ class Net::Arp_packet
 		/**
 		 * Placement new
 		 */
-		void * operator new(__SIZE_TYPE__ size, void* addr) { return addr; }
+		void * operator new(__SIZE_TYPE__, void* addr) { return addr; }
 
 
 		/*********

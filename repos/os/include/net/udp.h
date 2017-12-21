@@ -43,11 +43,14 @@ class Net::Udp_packet
 		 ** UDP header fields **
 		 ***********************/
 
-		Genode::uint16_t _src_port;
-		Genode::uint16_t _dst_port;
-		Genode::uint16_t _length;
-		Genode::uint16_t _checksum;
-		unsigned         _data[0];
+		struct
+		{
+			Genode::uint16_t _src_port;
+			Genode::uint16_t _dst_port;
+			Genode::uint16_t _length;
+			Genode::uint16_t _checksum;
+			unsigned         _data[0];
+		};
 
 	public:
 

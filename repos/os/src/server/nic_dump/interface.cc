@@ -22,9 +22,9 @@ using namespace Net;
 using namespace Genode;
 
 
-void Interface::_handle_eth(void              *const  eth_base,
-                            size_t             const  eth_size,
-                            Packet_descriptor  const &pkt)
+void Net::Interface::_handle_eth(void              *const  eth_base,
+                                 size_t             const  eth_size,
+                                 Packet_descriptor  const &)
 {
 	try {
 		Ethernet_frame &eth = *new (eth_base) Ethernet_frame(eth_size);
@@ -54,7 +54,7 @@ void Interface::_handle_eth(void              *const  eth_base,
 }
 
 
-void Interface::_send(Ethernet_frame &eth, Genode::size_t const size)
+void Net::Interface::_send(Ethernet_frame &eth, Genode::size_t const size)
 {
 	try {
 		Packet_descriptor const pkt = _source().alloc_packet(size);
@@ -67,7 +67,7 @@ void Interface::_send(Ethernet_frame &eth, Genode::size_t const size)
 }
 
 
-void Interface::_ready_to_submit()
+void Net::Interface::_ready_to_submit()
 {
 	while (_sink().packet_avail()) {
 
@@ -86,19 +86,19 @@ void Interface::_ready_to_submit()
 }
 
 
-void Interface::_ready_to_ack()
+void Net::Interface::_ready_to_ack()
 {
 	while (_source().ack_avail()) {
 		_source().release_packet(_source().get_acked_packet()); }
 }
 
 
-Interface::Interface(Entrypoint        &ep,
-                     Interface_label    label,
-                     Timer::Connection &timer,
-                     Duration          &curr_time,
-                     bool               log_time,
-                     Allocator         &alloc)
+Net::Interface::Interface(Entrypoint        &ep,
+                          Interface_label    label,
+                          Timer::Connection &timer,
+                          Duration          &curr_time,
+                          bool               log_time,
+                          Allocator         &alloc)
 :
 	_sink_ack     (ep, *this, &Interface::_ack_avail),
 	_sink_submit  (ep, *this, &Interface::_ready_to_submit),

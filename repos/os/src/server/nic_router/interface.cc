@@ -23,7 +23,12 @@
 #include <size_guard.h>
 
 using namespace Net;
-using namespace Genode;
+using Genode::Deallocator;
+using Genode::size_t;
+using Genode::uint32_t;
+using Genode::log;
+using Genode::error;
+using Genode::warning;
 
 
 /***************
@@ -235,7 +240,7 @@ Link_list &Interface::dissolved_links(L3_protocol const protocol)
 
 
 void Interface::_adapt_eth(Ethernet_frame          &eth,
-                           size_t            const  eth_size,
+                           size_t                  ,
                            Ipv4_address      const &ip,
                            Packet_descriptor const &pkt,
                            Domain                  &domain)
@@ -292,7 +297,7 @@ void Interface::_send_dhcp_reply(Dhcp_server               const &dhcp_srv,
                                  uint32_t                         xid)
 {
 	enum { PKT_SIZE = 512 };
-	using Size_guard = Size_guard_tpl<PKT_SIZE, Dhcp_msg_buffer_too_small>;
+	using Size_guard = Genode::Size_guard_tpl<PKT_SIZE, Dhcp_msg_buffer_too_small>;
 	send(PKT_SIZE, [&] (void *pkt_base) {
 
 		/* create ETH header of the reply */
@@ -397,8 +402,7 @@ void Interface::_new_dhcp_allocation(Ethernet_frame &eth,
 }
 
 
-void Interface::_handle_dhcp_request(Ethernet_frame &eth,
-                                     Genode::size_t  eth_size,
+void Interface::_handle_dhcp_request(Ethernet_frame &eth, size_t ,
                                      Dhcp_packet    &dhcp)
 {
 	try {
@@ -963,12 +967,12 @@ void Interface::_send_submit_pkt(Packet_descriptor &pkt,
 }
 
 
-Interface::Interface(Entrypoint        &ep,
-                     Timer::Connection &timer,
-                     Mac_address const  router_mac,
-                     Genode::Allocator &alloc,
-                     Mac_address const  mac,
-                     Domain            &domain)
+Interface::Interface(Genode::Entrypoint &ep,
+                     Timer::Connection  &timer,
+                     Mac_address const   router_mac,
+                     Genode::Allocator  &alloc,
+                     Mac_address const   mac,
+                     Domain             &domain)
 :
 	_sink_ack(ep, *this, &Interface::_ack_avail),
 	_sink_submit(ep, *this, &Interface::_ready_to_submit),

@@ -54,10 +54,13 @@ class Net::Ethernet_frame
 
 	private:
 
-		Genode::uint8_t  _dst[ADDR_LEN]; /* destination mac address */
-		Genode::uint8_t  _src[ADDR_LEN]; /* source mac address */
-		Genode::uint16_t _type;          /* encapsulated protocol */
-		unsigned         _data[0];       /* encapsulated data */
+		struct
+		{
+			Genode::uint8_t  _dst[ADDR_LEN]; /* destination mac address */
+			Genode::uint8_t  _src[ADDR_LEN]; /* source mac address */
+			Genode::uint16_t _type    ;      /* encapsulated protocol */
+			unsigned         _data[0];       /* encapsulated data */
+		};
 
 	public:
 
@@ -78,7 +81,8 @@ class Net::Ethernet_frame
 		 ** Constructor **
 		 *****************/
 
-		Ethernet_frame(Genode::size_t size) {
+		Ethernet_frame(Genode::size_t size)
+		{
 			/* at least, frame header needs to fit in */
 			if (size < sizeof(Ethernet_frame))
 				throw No_ethernet_frame();
@@ -112,7 +116,7 @@ class Net::Ethernet_frame
 		/**
 		 * Placement new operator.
 		 */
-		void * operator new(__SIZE_TYPE__ size, void* addr) { return addr; }
+		void * operator new(__SIZE_TYPE__, void* addr) { return addr; }
 
 
 		/*********
@@ -134,8 +138,11 @@ class Net::Ethernet_frame_sized : public Ethernet_frame
 			DS = DATA_SIZE + HS >= MIN_SIZE ? DATA_SIZE : MIN_SIZE - HS,
 		};
 
-		Genode::uint8_t  _data[DS];
-		Genode::uint32_t _checksum;
+		struct
+		{
+			Genode::uint8_t  _data[DS];
+			Genode::uint32_t _checksum;
+		};
 
 	public:
 

@@ -70,22 +70,25 @@ class Net::Dhcp_packet
 
 	private:
 
-		Genode::uint8_t   _op;
-		Genode::uint8_t   _htype;
-		Genode::uint8_t   _hlen;
-		Genode::uint8_t   _hops;
-		Genode::uint32_t  _xid;
-		Genode::uint16_t  _secs;
-		Genode::uint16_t  _flags;
-		Genode::uint8_t   _ciaddr[Ipv4_packet::ADDR_LEN];
-		Genode::uint8_t   _yiaddr[Ipv4_packet::ADDR_LEN];
-		Genode::uint8_t   _siaddr[Ipv4_packet::ADDR_LEN];
-		Genode::uint8_t   _giaddr[Ipv4_packet::ADDR_LEN];
-		Genode::uint8_t   _chaddr[16];
-		Genode::uint8_t   _sname[64];
-		Genode::uint8_t   _file[128];
-		Genode::uint32_t  _magic_cookie;
-		Genode::uint8_t   _opts[0];
+		struct
+		{
+			Genode::uint8_t   _op;
+			Genode::uint8_t   _htype;
+			Genode::uint8_t   _hlen;
+			Genode::uint8_t   _hops;
+			Genode::uint32_t  _xid;
+			Genode::uint16_t  _secs;
+			Genode::uint16_t  _flags;
+			Genode::uint8_t   _ciaddr[Ipv4_packet::ADDR_LEN];
+			Genode::uint8_t   _yiaddr[Ipv4_packet::ADDR_LEN];
+			Genode::uint8_t   _siaddr[Ipv4_packet::ADDR_LEN];
+			Genode::uint8_t   _giaddr[Ipv4_packet::ADDR_LEN];
+			Genode::uint8_t   _chaddr[16];
+			Genode::uint8_t   _sname[64];
+			Genode::uint8_t   _file[128];
+			Genode::uint32_t  _magic_cookie;
+			Genode::uint8_t   _opts[0];
+		};
 
 		enum Flag { BROADCAST = 0x80 };
 
@@ -131,9 +134,12 @@ class Net::Dhcp_packet
 		{
 			private:
 
-				Genode::uint8_t _code;
-				Genode::uint8_t _len;
-				Genode::uint8_t _value[0];
+				struct
+				{
+					Genode::uint8_t _code;
+					Genode::uint8_t _len;
+					Genode::uint8_t _value[0];
+				};
 
 			public:
 
@@ -446,7 +452,7 @@ class Net::Dhcp_packet
 		/**
 		 * Placement new.
 		 */
-		void * operator new(__SIZE_TYPE__ size, void* addr) { return addr; }
+		void * operator new(__SIZE_TYPE__, void* addr) { return addr; }
 
 
 		/*********

@@ -21,7 +21,7 @@
 using namespace Genode;
 using namespace Net;
 using Message_type       = Dhcp_packet::Message_type;
-using Drop_packet_inform = Interface::Drop_packet_inform;
+using Drop_packet_inform = Net::Interface::Drop_packet_inform;
 
 
 Configuration &Dhcp_client::_config() { return _domain().config(); };
