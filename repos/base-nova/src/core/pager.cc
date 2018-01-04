@@ -781,20 +781,10 @@ void Pager_object::_oom_handler(addr_t pager_dst, addr_t pager_src,
 
 
 	/* check assertions - cases that should not happen on Genode@Nova */
-	enum { NO_OOM_PT = ~0UL, EC_OF_PT_OOM_OUTSIDE_OF_CORE };
+	enum { NO_OOM_PT = 0UL };
 
 	/* all relevant (user) threads should have a OOM PT */
 	bool assert = pager_dst == NO_OOM_PT;
-
-	/*
-	 * PT OOM solely created by core and they have to point to the pager
-	 * thread inside core.
-	 *
-	 * XXX This assertion produces the compiler warning
-	 *     "error: comparison is always false due to limited range of
-	 *      data type [-Werror=type-limits]"
-	 */
-	/* assert |= pager_dst == EC_OF_PT_OOM_OUTSIDE_OF_CORE; */
 
 	/*
 	 * This pager thread does solely reply to IPC calls - it should never
