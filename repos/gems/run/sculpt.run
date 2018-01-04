@@ -8,12 +8,6 @@ create_boot_directory
 import_from_depot genodelabs/src/[base_src] \
                   genodelabs/pkg/sculpt \
                   genodelabs/src/e2fsprogs \
-                  genodelabs/src/vbox5-nova \
-                  genodelabs/src/libiconv \
-                  genodelabs/src/nic_router \
-                  genodelabs/src/acpica \
-                  genodelabs/src/bsd_audio_drv \
-                  genodelabs/src/mixer \
                   genodelabs/src/part_blk
 
 
