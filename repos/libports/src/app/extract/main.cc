@@ -83,7 +83,7 @@ struct Extract::Extracted_archive : Noncopyable
 			archive_read_close(ptr);
 			archive_read_free(ptr);
 		}
-	} src;
+	} src { };
 
 	struct Destination : Noncopyable
 	{
@@ -94,7 +94,7 @@ struct Extract::Extracted_archive : Noncopyable
 			archive_write_close(ptr);
 			archive_write_free(ptr);
 		}
-	} dst;
+	} dst { };
 
 	typedef String<256> Path;
 
