@@ -26,7 +26,7 @@ namespace Genode { struct Native_thread; }
 
 struct Genode::Native_thread
 {
-	enum { INVALID_INDEX = ~0UL };
+	static constexpr unsigned long INVALID_INDEX = ~0UL;
 
 	addr_t ec_sel     { 0 };      /* selector for execution context */
 	addr_t exc_pt_sel { 0 };      /* base of event portal window */

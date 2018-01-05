@@ -61,7 +61,7 @@ static inline bool ipc_error(l4_msgtag_t tag, bool print)
 }
 
 
-enum { INVALID_BADGE = ~0UL };
+static constexpr unsigned long INVALID_BADGE = ~0UL;
 
 
 /**
