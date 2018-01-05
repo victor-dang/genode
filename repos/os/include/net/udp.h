@@ -50,7 +50,7 @@ class Net::Udp_packet
 			Genode::uint16_t _length;
 			Genode::uint16_t _checksum;
 			unsigned         _data[0];
-		};
+		} __attribute__((packed));
 
 	public:
 

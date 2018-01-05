@@ -114,7 +114,7 @@ class Net::Ipv4_packet
 			Genode::uint8_t  _src[ADDR_LEN];
 			Genode::uint8_t  _dst[ADDR_LEN];
 			unsigned         _data[0];
-		};
+		} __attribute__((packed));
 
 		/**
 		 * Bitmasks for differentiated services field.

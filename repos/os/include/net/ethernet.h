@@ -60,7 +60,7 @@ class Net::Ethernet_frame
 			Genode::uint8_t  _src[ADDR_LEN]; /* source mac address */
 			Genode::uint16_t _type    ;      /* encapsulated protocol */
 			unsigned         _data[0];       /* encapsulated data */
-		};
+		} __attribute__((packed));
 
 	public:
 
