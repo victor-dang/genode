@@ -225,9 +225,12 @@ struct Extract::Main
 	}
 };
 
-extern "C" void wait_for_continue();
 
 void Libc::Component::construct(Libc::Env &env)
 {
 	static Extract::Main main(env);
 }
+
+/* dummy to prevent warning printed by unimplemented libc function */
+extern "C" mode_t umask(mode_t value) { return value; }
+
