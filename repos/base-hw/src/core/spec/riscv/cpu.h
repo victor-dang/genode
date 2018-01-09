@@ -49,10 +49,7 @@ class Genode::Cpu : public Hw::Riscv_cpu
 
 		struct Mmu_context
 		{
-			struct
-			{
-				Sptbr::access_t sptbr;
-			};
+			Sptbr::access_t sptbr = 0;
 
 			Mmu_context(addr_t page_table_base);
 			~Mmu_context();
