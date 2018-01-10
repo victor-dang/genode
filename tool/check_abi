@@ -97,6 +97,8 @@ proc abi_symbol_name { line } { return [lindex $line 0] }
 foreach line $abi_symbols { set  count([abi_symbol_name $line]) 0 }
 foreach line $abi_symbols { incr count([abi_symbol_name $line]) }
 
+set duplicates {}
+
 foreach line $abi_symbols {
 	if {$count([abi_symbol_name $line]) > 1} {
 		lappend duplicates [abi_symbol_name $line] } }
