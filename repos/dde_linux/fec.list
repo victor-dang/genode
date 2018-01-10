@@ -1,3 +1,15 @@
 linux-x.x.x/drivers/net/ethernet/freescale/fec.h
 linux-x.x.x/drivers/net/ethernet/freescale/fec_main.c
 linux-x.x.x/drivers/net/ethernet/freescale/fec_ptp.c
+linux-x.x.x/include/asm-generic/bitops/non-atomic.h
+linux-x.x.x/include/asm-generic/bitops/__ffs.h
+linux-x.x.x/include/asm-generic/bitops/__fls.h
+linux-x.x.x/include/asm-generic/bitops/ffs.h
+linux-x.x.x/include/asm-generic/bitops/fls.h
+linux-x.x.x/include/asm-generic/bitops/fls64.h
+linux-x.x.x/include/linux/list.h
+linux-x.x.x/include/linux/log2.h
+linux-x.x.x/include/linux/ptp_clock_kernel.h
+linux-x.x.x/include/linux/timecounter.h
+linux-x.x.x/include/uapi/linux/net_tstamp.h
+linux-x.x.x/include/uapi/linux/ptp_clock.h

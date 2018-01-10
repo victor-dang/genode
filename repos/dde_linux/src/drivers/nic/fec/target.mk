@@ -14,6 +14,7 @@ INC_DIR += $(REP_DIR)/src/lib/usb/include/spec/arm
 # contrib code
 LX_CONTRIB_DIR := $(call select_from_ports,dde_linux)/src/drivers/nic/fec
 SRC_C          += $(notdir $(wildcard $(LX_CONTRIB_DIR)/drivers/net/ethernet/freescale/*.c))
+INC_DIR        += $(LX_CONTRIB_DIR)/include
 
 #
 # Linux sources are C89 with GNU extensions
@@ -23,10 +24,9 @@ CC_C_OPT += -std=gnu89
 #
 # Reduce build noise of compiling contrib code
 #
-#CC_WARN = -Wall -Wno-uninitialized -Wno-unused-but-set-variable \
-#          -Wno-unused-variable -Wno-unused-function \
-#          -Wno-pointer-arith -Wno-pointer-sign \
-#          -Wno-int-to-pointer-cast
+CC_OPT_fec_ptp  = -Wno-unused-but-set-variable -Wno-unused-variable \
+                  -Wno-maybe-uninitialized -Wno-uninitialized
+CC_OPT_fec_main = -Wno-unused-but-set-variable -Wno-unused-variable
 
 vpath %.c  $(LX_CONTRIB_DIR)/drivers/net/ethernet/freescale
 vpath %.cc $(PRG_DIR)
