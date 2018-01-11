@@ -9,6 +9,7 @@ INC_DIR += $(PRG_DIR)
 SRC_CC  += env.cc irq.cc malloc.cc scheduler.cc timer.cc
 INC_DIR += $(REP_DIR)/src/include
 INC_DIR += $(REP_DIR)/src/include/spec/arm
+INC_DIR += $(REP_DIR)/src/include/spec/arm_v7
 INC_DIR += $(REP_DIR)/src/lib/usb/include/spec/arm
 
 # contrib code
@@ -26,7 +27,8 @@ CC_C_OPT += -std=gnu89
 #
 CC_OPT_fec_ptp  = -Wno-unused-but-set-variable -Wno-unused-variable \
                   -Wno-maybe-uninitialized -Wno-uninitialized
-CC_OPT_fec_main = -Wno-unused-but-set-variable -Wno-unused-variable
+CC_OPT_fec_main = -Wno-unused-but-set-variable -Wno-unused-variable \
+                  -Wno-pointer-sign -Wno-int-conversion
 
 vpath %.c  $(LX_CONTRIB_DIR)/drivers/net/ethernet/freescale
 vpath %.cc $(PRG_DIR)
