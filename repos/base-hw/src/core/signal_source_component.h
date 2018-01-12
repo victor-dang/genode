@@ -33,7 +33,7 @@ namespace Genode {
 
 
 struct Genode::Signal_context_component : private Kernel_object<Kernel::Signal_context>,
-                                          private Signal_context_pool::Entry
+                                          public Signal_context_pool::Entry
 {
 	friend class Object_pool<Signal_context_component>;
 
