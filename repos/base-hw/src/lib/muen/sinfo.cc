@@ -30,9 +30,7 @@ static_assert(sizeof(subject_info_type) <= Sinfo::SIZE,
 	 "Size of subject info type larger than Sinfo::SIZE.");
 
 /* Log channel information */
-static bool log_channel(
-		const struct Genode::Sinfo::Channel_info * const channel,
-		void *data)
+static bool log_channel(Genode::Sinfo::Channel_info * const channel, void *)
 {
 	if (channel->has_event || channel->has_vector) {
 		Genode::log("muen-sinfo: [",
@@ -65,7 +63,7 @@ static bool hash_available(const uint8_t * const first)
 
 
 /* Convert given hash to hex string */
-static const char * const hash_to_hex(char *buffer, const unsigned char *first)
+static char *hash_to_hex(char *buffer, const unsigned char *first)
 {
 	int i;
 	for (i = 0; i < Sinfo::HASH_LENGTH; i++)
@@ -75,8 +73,7 @@ static const char * const hash_to_hex(char *buffer, const unsigned char *first)
 
 
 /* Log memory region information */
-static bool log_memregion(const struct Genode::Sinfo::Memregion_info * const region,
-                          void *data)
+static bool log_memregion(Genode::Sinfo::Memregion_info * const region, void *)
 {
 	char hash_str[65];
 
@@ -112,9 +109,10 @@ static bool is_channel(const struct resource_type * const resource)
 
 
 Sinfo::Sinfo(const addr_t base_addr)
+:
+	sinfo((subject_info_type *)base_addr)
 {
 	const uint64_t sinfo_page_size = roundup(sizeof(subject_info_type), 0x1000);
-	sinfo      = ((subject_info_type *)base_addr);
 	sched_info = ((scheduling_info_type *)(base_addr + sinfo_page_size));
 
 	if (!check_magic()) {
