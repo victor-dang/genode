@@ -37,12 +37,12 @@ static bool log_channel(Genode::Sinfo::Channel_info * const channel, void *)
 		            channel->writable ? "writer" : "reader", " with ",
 		            channel->has_event ? "event " : "vector", " ",
 		            channel->has_event ? channel->event_number : channel->vector,
-		            "] ", channel->name);
+		            "] ", Genode::Cstring(channel->name));
 	} else {
 		Genode::log("muen-sinfo: [",
 		            channel->writable ? "writer" : "reader", " with no ",
 		            channel->writable ? "event " : "vector", " ",
-		            "] ", channel->name);
+		            "] ", Genode::Cstring(channel->name));
 	}
 
 	return true;
@@ -82,13 +82,13 @@ static bool log_memregion(Genode::Sinfo::Memregion_info * const region, void *)
 	            " size ", Genode::Hex(region->size), " ",
 	            region->writable ? "rw" : "ro",
 	            region->executable ? "x" : "-",
-	            "] ", region->name);
+	            "] ", Genode::Cstring(region->name));
 
 	if (region->content == Sinfo::CONTENT_FILL)
 		Genode::log("muen-sinfo:  [pattern ", region->pattern, "]");
 	if (hash_available(region->hash))
 		Genode::log("muen-sinfo:  [hash 0x",
-		            hash_to_hex(hash_str, region->hash), "]");
+		            Genode::Cstring(hash_to_hex(hash_str, region->hash)), "]");
 
 	return true;
 }
