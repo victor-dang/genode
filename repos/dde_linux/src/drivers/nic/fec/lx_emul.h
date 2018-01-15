@@ -30,7 +30,6 @@ typedef int clockid_t;
 enum { HZ = 100UL, };
 
 struct list_head;
-void INIT_LIST_HEAD(struct list_head *list);
 
 typedef __u16 __le16;
 typedef __u32 __le32;
@@ -59,8 +58,22 @@ typedef __s64 time64_t;
 #include <uapi/linux/swab.h>
 #include <lx_emul/byteorder.h>
 #include <lx_emul/completion.h>
+#include <lx_emul/ioport.h>
 #include <uapi/linux/net_tstamp.h>
 #include <uapi/linux/ptp_clock.h>
+#include <lx_emul/pm.h>
+
+struct ethhdr { };
+
+enum {
+	ETH_HLEN     = 14,
+	ETH_ALEN     = 6,      /* octets in one ethernet addr */
+	ETH_P_8021Q  = 0x8100, /* 802.1Q VLAN Extended Header  */
+	ETH_P_IP     = 0x0800,
+	VLAN_HLEN    = 4,
+};
+
+#include <uapi/linux/ethtool.h>
 
 #define dev_info(  dev, format, arg...) lx_printf("dev_info: "   format , ## arg)
 #define dev_warn(  dev, format, arg...) lx_printf("dev_warn: "   format , ## arg)
@@ -79,26 +92,6 @@ typedef __s64 time64_t;
 #define netdev_err(dev, fmt, args...)  lx_printf("nedev_err:  " fmt, ##args)
 #define netdev_warn(dev, fmt, args...) lx_printf("nedev_warn: " fmt, ##args)
 #define netdev_info(dev, fmt, args...) lx_printf("nedev_info: " fmt, ##args)
-
-typedef enum {
-	PHY_INTERFACE_MODE_NA,
-	PHY_INTERFACE_MODE_MII,
-	PHY_INTERFACE_MODE_GMII,
-	PHY_INTERFACE_MODE_SGMII,
-	PHY_INTERFACE_MODE_TBI,
-	PHY_INTERFACE_MODE_REVMII,
-	PHY_INTERFACE_MODE_RMII,
-	PHY_INTERFACE_MODE_RGMII,
-	PHY_INTERFACE_MODE_RGMII_ID,
-	PHY_INTERFACE_MODE_RGMII_RXID,
-	PHY_INTERFACE_MODE_RGMII_TXID,
-	PHY_INTERFACE_MODE_RTBI,
-	PHY_INTERFACE_MODE_SMII,
-	PHY_INTERFACE_MODE_XGMII,
-	PHY_INTERFACE_MODE_MOCA,
-	PHY_INTERFACE_MODE_QSGMII,
-	PHY_INTERFACE_MODE_MAX,
-} phy_interface_t;
 
 struct completion {};
 
@@ -128,9 +121,20 @@ static inline s64 timespec64_to_ns(const struct timespec64 *ts)
 
 ktime_t ns_to_ktime(u64 ns);
 
+struct device_node {};
+
+struct device_driver {
+	const char * name;
+	const struct of_device_id*of_match_table;
+	const struct dev_pm_ops *pm;
+};
+
 struct device {
+	struct device * parent;
+	struct device_driver *driver;
 	void * platform_data;
 	void * driver_data;
+	struct device_node *of_node;
 };
 
 struct platform_device_id {
@@ -139,6 +143,7 @@ struct platform_device_id {
 };
 
 struct platform_device {
+	const char * name;
 	struct device dev;
 	const struct platform_device_id * id_entry;
 };
@@ -151,6 +156,31 @@ static inline void *platform_get_drvdata(const struct platform_device *pdev)
 }
 
 void udelay(unsigned long usecs);
+
+enum netdev_tx {
+	NETDEV_TX_OK = 0x00,
+	NETDEV_TX_BUSY = 0x10,
+	NETDEV_TX_LOCKED = 0x20,
+};
+typedef enum netdev_tx netdev_tx_t;
+
+struct sk_buff;
+struct ifreq;
+
+typedef u64 netdev_features_t;
+
+struct net_device_ops {
+	int (*ndo_open) (struct net_device *dev);
+	int (*ndo_stop) (struct net_device *dev);
+	netdev_tx_t (*ndo_start_xmit) (struct sk_buff *skb, struct net_device *dev);
+	void (*ndo_set_rx_mode) (struct net_device *dev);
+	int (*ndo_change_mtu) (struct net_device *dev, int new_mtu);
+	int (*ndo_validate_addr) (struct net_device *dev);
+	void (*ndo_tx_timeout) (struct net_device *dev);
+	int (*ndo_set_mac_address)(struct net_device *dev, void *addr);
+	int (*ndo_do_ioctl)(struct net_device *dev, struct ifreq *ifr, int cmd);
+	int (*ndo_set_features)(struct net_device *dev, netdev_features_t features);
+};
 
 struct net_device_stats {
 	unsigned long rx_packets;
@@ -175,14 +205,31 @@ struct net_device_stats {
 	unsigned long tx_window_errors;
 };
 
-typedef u64 netdev_features_t;
+struct netdev_hw_addr {
+	struct list_head list;
+	unsigned char addr[32];
+};
+
+struct netdev_hw_addr_list {
+	struct list_head list;
+	int count;
+};
 
 struct net_device
 {
 	netdev_features_t features;
 	struct net_device_stats stats;
+	netdev_features_t hw_features;
+	const struct net_device_ops *netdev_ops;
+	const struct ethtool_ops *ethtool_ops;
+	unsigned int flags;
+	unsigned char addr_len;
+	struct netdev_hw_addr_list mc;
 	unsigned char *dev_addr;
+	int watchdog_timeo;
 	void *priv;
+	struct device dev;
+	u16 gso_max_segs;
 };
 
 static inline void *netdev_priv(const struct net_device *dev) { return dev->priv; }
@@ -212,14 +259,6 @@ int snprintf(char *buf, size_t size, const char *fmt, ...);
 struct clk {};
 
 unsigned long clk_get_rate(struct clk * clk);
-
-enum {
-	ETH_HLEN     = 14,
-	ETH_ALEN     = 6,      /* octets in one ethernet addr */
-	ETH_P_8021Q  = 0x8100, /* 802.1Q VLAN Extended Header  */
-	ETH_P_IP     = 0x0800,
-	VLAN_HLEN    = 4,
-};
 
 #define module_param_array(macaddr, byte, arg1, arg2);
 
@@ -383,9 +422,6 @@ void dev_kfree_skb_any(struct sk_buff *);
 
 int net_ratelimit(void);
 
-enum netdev_tx { NETDEV_TX_OK = 0, NETDEV_TX_BUSY = 0x10 };
-typedef enum netdev_tx netdev_tx_t;
-
 unsigned int tcp_hdrlen(const struct sk_buff *skb);
 
 struct netdev_queue *netdev_get_tx_queue(const struct net_device *dev, unsigned int index);
@@ -393,21 +429,7 @@ void netif_tx_stop_queue(struct netdev_queue *dev_queue);
 void netif_tx_wake_queue(struct netdev_queue *dev_queue);
 bool netif_queue_stopped(const struct net_device *dev);
 
-enum { DUPLEX_FULL  = 0x1, };
-
 #define CONFIG_ARCH_MXC 1
-
-struct phy_device
-{
-	int speed;
-	int pause;
-};
-
-enum {
-	SPEED_10   = 10,
-	SPEED_100  = 100,
-	SPEED_1000 = 1000,
-};
 
 void rtnl_lock(void);
 void rtnl_unlock(void);
@@ -477,6 +499,188 @@ bool napi_schedule_prep(struct napi_struct *n);
 void __napi_schedule(struct napi_struct *n);
 
 void napi_complete(struct napi_struct *n);
+
+void *dev_get_platdata(const struct device *dev);
+
+int is_valid_ether_addr(const u8 *);
+
+const void *of_get_mac_address(struct device_node *np);
+
+void eth_hw_addr_random(struct net_device *dev);
+
+int pm_runtime_get_sync(struct device *dev);
+
+void reinit_completion(struct completion *x);
+
+void pm_runtime_mark_last_busy(struct device *dev);
+
+int pm_runtime_put_autosuspend(struct device *dev);
+
+int clk_prepare_enable(struct clk *);
+
+void clk_disable_unprepare(struct clk *);
+
+struct phy_device *of_phy_connect(struct net_device *dev, struct device_node *phy_np, void (*hndlr)(struct net_device *), u32 flags, int iface);
+
+const char *dev_name(const struct device *dev);
+
+void *kmalloc(size_t size, gfp_t flags);
+void kfree(const void *);
+void *kzalloc(size_t size, gfp_t flags);
+
+struct mii_bus;
+struct device_node *of_get_child_by_name( const struct device_node *node, const char *name);
+void of_node_put(struct device_node *node);
+int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np);
+
+struct resource *platform_get_resource(struct platform_device *, unsigned, unsigned);
+
+int ethtool_op_get_ts_info(struct net_device *, struct ethtool_ts_info *);
+
+int  device_set_wakeup_enable(struct device *dev, bool enable);
+
+bool device_may_wakeup(struct device *dev);
+
+int enable_irq_wake(unsigned int irq);
+int disable_irq_wake(unsigned int irq);
+
+struct ethtool_ops {
+	int(*get_settings)(struct net_device *, struct ethtool_cmd *);
+	int(*set_settings)(struct net_device *, struct ethtool_cmd *);
+	void(*get_drvinfo)(struct net_device *, struct ethtool_drvinfo *);
+	int(*get_regs_len)(struct net_device *);
+	void(*get_regs)(struct net_device *, struct ethtool_regs *, void *);
+	void(*get_wol)(struct net_device *, struct ethtool_wolinfo *);
+	int(*set_wol)(struct net_device *, struct ethtool_wolinfo *);
+	int(*nway_reset)(struct net_device *);
+	u32(*get_link)(struct net_device *);
+	int(*get_coalesce)(struct net_device *, struct ethtool_coalesce *);
+	int(*set_coalesce)(struct net_device *, struct ethtool_coalesce *);
+	void(*get_pauseparam)(struct net_device *, struct ethtool_pauseparam*);
+	int(*set_pauseparam)(struct net_device *, struct ethtool_pauseparam*);
+	void(*get_strings)(struct net_device *, u32 stringset, u8 *);
+	void(*get_ethtool_stats)(struct net_device *, struct ethtool_stats *, u64 *);
+	int(*get_sset_count)(struct net_device *, int);
+	int(*get_ts_info)(struct net_device *, struct ethtool_ts_info *);
+	int(*get_tunable)(struct net_device *,
+			       const struct ethtool_tunable *, void *);
+	int(*set_tunable)(struct net_device *,
+			       const struct ethtool_tunable *, const void *);
+};
+
+u32 ethtool_op_get_link(struct net_device *);
+
+void *dma_alloc_coherent(struct device *, size_t, dma_addr_t *, gfp_t);
+void dma_free_coherent(struct device *, size_t size, void *vaddr, dma_addr_t bus);
+
+enum {
+	SIOCSHWTSTAMP = 0x89b0,
+	SIOCGHWTSTAMP = 0x89b1,
+};
+
+void netif_tx_start_all_queues(struct net_device *dev);
+
+int pinctrl_pm_select_default_state(struct device *dev);
+
+int pinctrl_pm_select_sleep_state(struct device *dev);
+
+void netif_tx_disable(struct net_device *dev);
+
+enum {
+	IFF_PROMISC          = 0x100,
+	IFF_ALLMULTI         = 0x200,
+};
+
+#include <lx_emul/list.h>
+
+#define netdev_hw_addr_list_for_each(ha, l) \
+	list_for_each_entry(ha, &(l)->list, list)
+
+#define netdev_for_each_mc_addr(ha, dev) \
+	netdev_hw_addr_list_for_each(ha, &(dev)->mc)
+
+void netif_tx_wake_all_queues(struct net_device *);
+
+struct sockaddr {
+	unsigned short sa_family;
+	char sa_data[14];
+};
+
+int eth_validate_addr(struct net_device *);
+
+void *dmam_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle, gfp_t gfp);
+
+int eth_change_mtu(struct net_device *dev, int new_mtu);
+int eth_validate_addr(struct net_device *dev);
+
+void netif_napi_add(struct net_device *dev, struct napi_struct *napi, int (*poll)(struct napi_struct *, int), int weight);
+
+bool of_device_is_available(const struct device_node *device);
+int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value);
+
+enum { NAPI_POLL_WEIGHT = 64 };
+
+#define SET_NETDEV_DEV(net, pdev)        ((net)->dev.parent = (pdev))
+
+struct net_device *alloc_etherdev_mqs(int sizeof_priv, unsigned int txqs, unsigned int rxqs);
+
+void *devm_ioremap_resource(struct device *dev, struct resource *res);
+
+const struct of_device_id *of_match_device(const struct of_device_id *matches, const struct device *dev);
+
+const void *of_get_property(const struct device_node *node, const char *name, int *lenp);
+
+void platform_set_drvdata(struct platform_device *pdev, void *data);
+
+struct device_node *of_parse_phandle(const struct device_node *np, const char *phandle_name, int index);
+
+int of_phy_register_fixed_link(struct device_node *np);
+bool of_phy_is_fixed_link(struct device_node *np);
+struct device_node *of_node_get(struct device_node *node);
+int of_get_phy_mode(struct device_node *np);
+
+struct clk *devm_clk_get(struct device *dev, const char *id);
+struct regulator *__must_check devm_regulator_get(struct device *dev, const char *id);
+
+void pm_runtime_set_autosuspend_delay(struct device *dev, int delay);
+void pm_runtime_use_autosuspend(struct device *dev);
+void pm_runtime_get_noresume(struct device *dev);
+int  pm_runtime_set_active(struct device *dev);
+void pm_runtime_enable(struct device *dev);
+
+int regulator_enable(struct regulator *);
+
+int platform_get_irq(struct platform_device *, unsigned int);
+
+void netif_carrier_off(struct net_device *dev);
+
+int register_netdev(struct net_device *);
+void unregister_netdev(struct net_device *);
+
+void free_netdev(struct net_device *);
+
+int device_init_wakeup(struct device *dev, bool val);
+
+int regulator_disable(struct regulator *r);
+
+void *dev_get_drvdata(const struct device *dev);
+
+void netif_device_attach(struct net_device *);
+void netif_device_detach(struct net_device *dev);
+
+int devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler, unsigned long irqflags, const char *devname, void *dev_id);
+
+#define SET_SYSTEM_SLEEP_PM_OPS(suspend_fn, resume_fn)
+#define SET_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn)
+
+struct platform_driver {
+	int (*probe)(struct platform_device *);
+	int (*remove)(struct platform_device *);
+	struct device_driver driver;
+	const struct platform_device_id *id_table;
+};
+
+#define module_platform_driver(x)
 
 #include <lx_emul/extern_c_end.h>
 
